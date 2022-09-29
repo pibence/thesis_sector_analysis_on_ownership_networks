@@ -5,7 +5,11 @@ import os
 from bs4 import BeautifulSoup
 import re
 
-logging.basicConfig(filename='logs/load.log', level=logging.DEBUG, format='%(asctime)s:%(levelname)s:%(message)s')
+logging.basicConfig(
+    filename="logs/load.log",
+    level=logging.DEBUG,
+    format="%(asctime)s:%(levelname)s:%(message)s",
+)
 
 
 def get_balace_sheet_data(path):
@@ -13,7 +17,6 @@ def get_balace_sheet_data(path):
     Function to retrieve total assets, total liabilities and total equity
     for a given firm from sec 10-Q filing.
     """
-
 
 
 def download_10q_filings(company_list, data_folder, reports_folder, missing_10q_path):
@@ -36,7 +39,7 @@ def download_10q_filings(company_list, data_folder, reports_folder, missing_10q_
         else:
             res = download_10q_filing_helper(cname, dl)
 
-        if res ==0:
+        if res == 0:
             comp_wo_10q.append(cname)
     failed_df = pd.DataFrame(comp_wo_10q, columns=["not_listed_companies"])
     failed_df.to_csv(missing_10q_path, index=False)
@@ -46,8 +49,7 @@ def download_10q_filings(company_list, data_folder, reports_folder, missing_10q_
 
 
 def download_10q_filing_helper(cname, dl):
-    
-    
+
     try:
         res = dl.get("10-Q", cname, amount=1)
         if res == 1:
@@ -56,29 +58,36 @@ def download_10q_filing_helper(cname, dl):
             logging.info(f"cannot find 10q filing for {cname}")
         return res
     except Exception as e:
-        logging.warning(f"when trying to download 10q filings for {cname} the following error occured: {e}")
+        logging.warning(
+            f"when trying to download 10q filings for {cname} the following error occured: {e}"
+        )
 
 
 def get_unique_companies(edgelist_path):
+    """
+    Function to list the unique companies that are in the edgelist.
+    """
 
     el = load_edgelist(edgelist_path)
 
     companies = []
-    for col in  ["source", "target"]:
+    for col in ["source", "target"]:
         companies.extend(el[col].unique())
-    
-    return companies
-    
 
+    return companies
 
 
 def load_edgelist(edgelist_path):
+    """
+    Function to concatenate separate edgelist chunks.
+    """
+
     edgelists = os.listdir(edgelist_path)
-    
+
     el_list = []
     for edgelist in edgelists:
         el_list.append(pd.read_csv(f"{edgelist_path}{edgelist}"))
-    
+
     df = pd.concat(el_list)
-    
+
     return df
