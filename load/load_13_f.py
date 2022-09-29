@@ -6,12 +6,11 @@ from bs4 import BeautifulSoup
 import re
 
 
-logging.basicConfig(filename='logs/load_13f.log', level=logging.DEBUG, format='%(asctime)s:%(levelname)s:%(message)s')
+logging.basicConfig(filename='logs/load.log', level=logging.DEBUG, format='%(asctime)s:%(levelname)s:%(message)s')
 
 
 def download_13f_filings(name_to_cik:dict, data_folder, filings_folder):
-    
-    dl = Downloader(data_folder)
+    dl = Downloader(f"{data_folder}13f")
     if os.path.exists(filings_folder):
         existing = os.listdir(filings_folder)
 
@@ -66,7 +65,7 @@ def parse_filing(path):
     of a given company and parses the holding into a dataframe. 3 different kind
     of shares can be hold, to obtain the total ownership, the value of 3 stock
     is summarized. The returned df contains the name of the issuer of the stock
-    and the value in USD.
+    and the value in 1000 USD.
     """
 
     soup = BeautifulSoup(open(path, encoding="utf8").read(), "lxml")
@@ -79,10 +78,10 @@ def parse_filing(path):
             # iterating through all companies that are held by the 13f reporter,
             # saving important data
             dic = {}
-            dic["name_of_issuer"] = table.find(re.compile("nameofissuer")).string
-            dic["title_of_class"] = table.find(re.compile("titleofclass")).string
-            dic["cusip"] =table.find(re.compile("cusip")).string
-            dic["value"] = int(table.find(re.compile("value")).string.replace(',', ''))*1000
+            dic["name_of_issuer"] = table.find(re.compile("nameofissuer")).text
+            dic["title_of_class"] = table.find(re.compile("titleofclass")).text
+            dic["cusip"] =table.find(re.compile("cusip")).text
+            dic["value"] = int(table.find(re.compile("value")).text.replace(',', ''))
             records.append(dic)
         
         df =pd.DataFrame(records)
@@ -114,40 +113,49 @@ def create_edgelist_from_df(df, holder):
     return edgelist
 
 
-def parse_filings_to_edgelists(filings_folder, name_to_cik_path, error_csv_path):
+def parse_filings_to_edgelists(filings_folder, name_to_cik_path, error_csv_path, edgelist_path):
     """
     Function that lists all existing 13f reports and parses each of them into
     edgelists, then concatenates the edgelists together. The paths for files that
-    are failed to parse are listed and saved to a csv file.
-    TODO write edgelists to file, divide it into chunks.
+    are failed to parse are listed and saved to a csv file. The edgelists are 
+    written to files in chunks to avoid memory overload.
     """
 
     fils = os.listdir(filings_folder)
     name_to_cik_dict = create_name_to_cik_dict(name_to_cik_path)
+    chunksize = 50
 
     edgelists = []
     failed_paths = []
-    for holder in fils[0:10]:
+    for i, holder in enumerate(fils):
         # get path, name for each 13f reporter company
         path = get_path_for_txt(filings_folder, holder)
         name = name_to_cik_dict[holder]
 
         # parse the txt filing dataframe, if succeeds, parse it to edgelist
         parsed_df = parse_filing(path)
+        
         if parsed_df is not None:
             edgelists.append(create_edgelist_from_df(parsed_df, name))
         else:
             logging.info(f"Could not parse holdings data for {name}")
             failed_paths.append(path)
-            
-    edgelist = pd.concat(edgelists)
-    logging.debug("A run has been finished.")
+
+        # writing the concatenated edgelists to files after a given chunksize to
+        # avoid memory overload
+        if ((i+1) % chunksize == 0)  or ((i+1) == len(fils)):
+            edgelist = pd.concat(edgelists)
+            edgelists = []
+            logging.info(f"{(i+1)/chunksize}. chunk has been written to csv.")
+            edgelist.to_csv(f"{edgelist_path}/{(i+1)/chunksize}_chunk.csv", index=False)
+        
 
     failed_df = pd.DataFrame(failed_paths, columns=["path"])
     failed_df.to_csv(error_csv_path, index=False)
     logging.info(f"paths that failed to parse are written to csv in {error_csv_path}")
+    logging.debug("A run has been finished.")
 
-    return edgelist
+    return 1
 
 
 
