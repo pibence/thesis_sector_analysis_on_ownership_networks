@@ -7,3 +7,6 @@ data:
   error_csv_path : data/failed_to_load_paths.csv
   10q_filings : data/10q/sec-edgar-filings/
   no_10q_path : data/companies_wo_10q.csv
+  industry_url : https://stockmarketmba.com/listofstocksinanindustry.php
+  industry_list_path : data/industries/industry_list.csv
+  industries_path : data/industries/
