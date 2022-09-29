@@ -1,0 +1,10 @@
+data:
+  data_folder: data
+  13f_submitters : data/2022q2_form13f/OTHERMANAGER.tsv
+  13_filings : data/sec-edgar-filings/
+  name_to_cik : data/name_to_cik.csv
+  edgelists : data/edgelist/
+  error_csv_path : data/failed_to_load_paths.csv
+
+log:
+  log_path = logs/load_13f.log
