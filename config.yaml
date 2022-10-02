@@ -5,8 +5,11 @@ data:
   name_to_cik : data/name_to_cik.csv
   edgelists : data/edgelist/
   error_csv_path : data/failed_to_load_paths.csv
-  10q_filings : data/10q/sec-edgar-filings/
-  no_10q_path : data/companies_wo_10q.csv
   industry_url : https://stockmarketmba.com/listofstocksinanindustry.php
   industry_list_path : data/industries/industry_list.csv
-  industries_path : data/industries/
+  industries : data/industries/
+  node_info_path : data/final/node_info.csv
+  edgelist_path : data/final/edgelist.csv
+
+parameters:
+  similarity_treshold : 0.9

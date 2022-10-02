@@ -5,6 +5,9 @@ import os
 from bs4 import BeautifulSoup
 import re
 
+"""Not used file anymore"""
+
+
 logging.basicConfig(
     filename="logs/load.log",
     level=logging.DEBUG,
