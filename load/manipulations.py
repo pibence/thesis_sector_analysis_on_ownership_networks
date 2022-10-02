@@ -60,7 +60,8 @@ def standardize_names(column):
         "technology",
         "series a",
         "series b",
-        "pharma" "\(.*?\)",
+        "pharma",
+        "\(.*?\)",
     ]
     column = column.astype(str)
     ret_col = column.apply(lambda x: x.lower())

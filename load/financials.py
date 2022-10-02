@@ -28,6 +28,7 @@ def add_financial_info_to_nodes(node_info_path):
     Function that downloads financial data for tickers and appends them to
     the node_info table.
     """
+
     node_info = pd.read_csv(node_info_path)
 
     tickers = node_info.symbol

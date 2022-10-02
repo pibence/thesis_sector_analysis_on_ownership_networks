@@ -11,17 +11,19 @@ def process:
 
     for firm in failed ones:
 
-        if neigbors == 0:
-            continue on next failed one
-        else:
-            for neighbor in neighbors:
+        def subprocess:
 
-                calculate the new value # they might have been shocked to some extent but did not fail, also add the loss of value coming from the owned assets
-                
-                if value < threshold:
-                    call this function recursively (from line 10, if case)
-                else:
-                    continue on next neighbor
+            if neigbors == 0:
+                continue on next failed one
+            else:
+                for neighbor in neighbors:
+
+                    calculate the new value # they might have been shocked to some extent but did not fail, also add the loss of value coming from the owned assets
+                    
+                    if value < threshold:
+                        call this subprocess recursively
+                    else:
+                        continue on next neighbor
 
 Process properties:
 * shock only propagated through if there was a dafeult --> loss in value does not result in loss of other firms value if threshold is not reached
@@ -30,8 +32,8 @@ upgrade idea: recalculate values of each neighbor regardless of the failure, if 
 change required: iterate through all the effected nodes, not olny the ones who fail
 
 ## Simulation
-0. Calculate predefinied centrality measures for all nodes --> TODO define the measures
-1. All sector shock simulated 10.000 times --> Monte carlo sim
+0. Calculate predefinied centrality measures for all nodes --> degree centrality, betweenness centrality
+1. All sector shock simulated ~10.000 times --> Monte carlo sim
 2. Save the state of the sector: which companies failed in the first round (*starters*), second (*propagators*), etc, save their centrality measures
 3. Compare the results when shocks propagete --> TODO: define contagion
 4. Calculate the ratio of contagion occurance --> the higher the ratio, the more important the sector is
