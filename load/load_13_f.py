@@ -4,6 +4,7 @@ from sec_edgar_downloader import Downloader
 import os
 from bs4 import BeautifulSoup
 import re
+import datetime
 
 
 logging.basicConfig(
@@ -97,27 +98,41 @@ def parse_filing(path):
     soup = BeautifulSoup(open(path, encoding="utf8").read(), "lxml")
 
     try:
-        infotables = soup.find_all(re.compile("infotable"))
+        header = soup.find_all("headerdata")[0]
+        date_str = header.find("periodofreport").text
+        date = datetime.datetime.strptime(date_str, "%m-%d-%Y").date()
 
-        records = []
-        for table in infotables:
-            # iterating through all companies that are held by the 13f reporter,
-            # saving important data
-            dic = {}
-            dic["name_of_issuer"] = table.find(re.compile("nameofissuer")).text
-            dic["title_of_class"] = table.find(re.compile("titleofclass")).text
-            dic["cusip"] = table.find(re.compile("cusip")).text
-            dic["value"] = int(table.find(re.compile("value")).text.replace(",", ""))
-            records.append(dic)
+        if date > datetime.date(2022, 6, 1):
+            infotables = soup.find_all(re.compile("infotable"))
 
-        df = pd.DataFrame(records)
+            records = []
+            for table in infotables:
+                # iterating through all companies that are held by the 13f reporter,
+                # saving important data
+                dic = {}
+                dic["name_of_issuer"] = table.find(re.compile("nameofissuer")).text
+                dic["title_of_class"] = table.find(re.compile("titleofclass")).text
+                dic["cusip"] = table.find(re.compile("cusip")).text
+                dic["value"] = int(
+                    table.find(re.compile("value")).text.replace(",", "")
+                )
+                records.append(dic)
 
-        # summarize ownership in 3 different share types to get full ownership
-        df = df.groupby("name_of_issuer")[["value"]].sum().reset_index()
-        df[["name_of_issuer"]] = df[["name_of_issuer"]].apply(lambda x: x.str.lower())
-        logging.info(f"holdings parsed from file {path}")
+            df = pd.DataFrame(records)
 
-        return df
+            # summarize ownership in 3 different share types to get full ownership
+            df = df.groupby("name_of_issuer")[["value"]].sum().reset_index()
+            df[["name_of_issuer"]] = df[["name_of_issuer"]].apply(
+                lambda x: x.str.lower()
+            )
+            logging.info(f"holdings parsed from file {path}")
+
+            return df
+
+        else:
+            logging.info(
+                f"Filing in {path} contains older data then last quarter, information is ignored."
+            )
 
     except Exception as e:
         logging.warning(

@@ -5,4 +5,5 @@ data/
 logs/
 __pycache__/
 *.csv
+notes.md
 

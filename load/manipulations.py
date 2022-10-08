@@ -12,7 +12,11 @@ logging.basicConfig(
 
 
 def standardize_tickers(column):
-    return column.str.replace("=", "", regex=False)
+
+    ret_col = column.str.replace("=", "", regex=False)
+    ret_col = ret_col.str.replace(".", "-", regex=False)
+
+    return ret_col
 
 
 def standardize_names(column):
@@ -37,6 +41,7 @@ def standardize_names(column):
         "plc",
         "adrs",
         r"\badr\b",
+        r"\band\b",
         "adr$",
         "mgmt",
         "management",
@@ -65,8 +70,9 @@ def standardize_names(column):
     ]
     column = column.astype(str)
     ret_col = column.apply(lambda x: x.lower())
-    ret_col = ret_col.str.replace(",", "", regex=False)
-    ret_col = ret_col.str.replace(".", "", regex=False)
+    ret_col = ret_col.str.replace(",", " ", regex=False)
+    ret_col = ret_col.str.replace(".", " ", regex=False)
+    ret_col = ret_col.str.replace("&", "", regex=False)
     ret_col = ret_col.str.replace("/", "", regex=False)
     ret_col = ret_col.str.replace("-", "", regex=False)
     ret_col = ret_col.apply(lambda x: " ".join(x.split()))
