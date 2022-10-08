@@ -5,7 +5,10 @@ data:
   edgelists : data/edgelist/
   financials : data/refinitiv/
   error_csv_path : data/failed_to_load_paths.csv
-  node_info_path : data/final/node_info.csv
+  similarity_path : data/working_files/similarity.csv
+  edgelist_temp: data/working_files/edgelist.csv
+  node_temp: data/working_files/nodes.csv
+  node_path : data/final/nodes.csv
   edgelist_path : data/final/edgelist.csv
 
 parameters:
