@@ -2,7 +2,7 @@ import pandas as pd
 import jellyfish
 import itertools
 import logging
-from load.helpers import parse_csvs_from_folder
+from load.helpers import parse_csvs_from_folder, parse_financials_from_folder
 
 logging.basicConfig(
     filename="logs/load.log",
@@ -13,13 +13,16 @@ logging.basicConfig(
 
 def standardize_tickers(column):
 
-    ret_col = column.str.replace("=", "", regex=False)
-    ret_col = ret_col.str.replace(".", "-", regex=False)
+    ret_col = ret_col.apply(lambda x: x.split(".")[0])
 
     return ret_col
 
 
 def standardize_names(column):
+    """
+    Function that standardizes the names of the companies in to prepare them
+    for string distance calculation.
+    """
 
     corp_name_list = [
         r"\binc\b",
@@ -68,13 +71,13 @@ def standardize_names(column):
         "pharma",
         "\(.*?\)",
     ]
+    spec_char_dict: {",": "", ".": " ", "&": " ", "/": "", "-": ""}
+
     column = column.astype(str)
     ret_col = column.apply(lambda x: x.lower())
-    ret_col = ret_col.str.replace(",", " ", regex=False)
-    ret_col = ret_col.str.replace(".", " ", regex=False)
-    ret_col = ret_col.str.replace("&", "", regex=False)
-    ret_col = ret_col.str.replace("/", "", regex=False)
-    ret_col = ret_col.str.replace("-", "", regex=False)
+    for char, value in spec_char_dict.items():
+        ret_col = ret_col.str.replace(char, value, regex=False)
+
     ret_col = ret_col.apply(lambda x: " ".join(x.split()))
 
     for name in corp_name_list:
@@ -86,40 +89,32 @@ def standardize_names(column):
 
 
 def create_node_info_and_filtered_edgelist(
-    industry_folder, edgelist_folder, threshold, node_info_path, edgelist_path
+    financials_folder, edgelist_folder, threshold, node_info_path, edgelist_path
 ):
     """
     Function to find the tickers and industries for all companies in the edgelist.
     It also narrows down the scope of companies to the US-based ones by joining
-    the industries file on the edgelist source. First it tries to merge the two
-    datasets with normal pd.merge. For the companies that have mismatch in names
-    it calculates string similirity measures and joins on them above a certain
+    the industries file on the edgelist source. For the company names it calculates
+    string similirity measure (Jaro-Winkler) and joins on them above a certain
     threshold.
     """
+    
     edgelist = parse_csvs_from_folder(edgelist_folder)
-    industry = parse_csvs_from_folder(industry_folder)
-    logging.info("industry data and edgelist chunks are read.")
+    financials = parse_financials_from_folder(financials_folder)
+    logging.info("financials data and edgelist chunks are read.")
 
-    industry["description"] = standardize_names(industry["description"])
-    industry["symbol"] = standardize_tickers(industry["symbol"])
+    financials["company_name"] = standardize_names(financials["company_name"])
+    financials["identifier"] = standardize_tickers(financials["identifier"])
     edgelist["source"] = standardize_names(edgelist["source"])
     edgelist["target"] = standardize_names(edgelist["target"])
     logging.info("name standardization finished.")
 
     # getting unique values for sources in edgelist
-    unique_source = edgelist.groupby("source").count().reset_index()[["source"]]
-    # merging the two dataframes based on perfect match
-    merged_df = industry.merge(
-        unique_source, how="left", left_on="description", right_on="source"
-    )
-    missing = merged_df[pd.isna(merged_df.source)][["description"]]
-    logging.info(
-        "industry info and edgelist data are merged, missing companies are identified."
-    )
+    unique_target = edgelist.groupby("target").count().reset_index()[["target"]]
 
-    sim_df = calculate_similarity_df(missing.description, unique_source.source)
+    sim_df = calculate_similarity_df(financials.company_name, unique_target.target)
     logging.info(
-        "similarity measures are calculated for the names that have no equivalent in edgelist."
+        "similarity measures are calculated for the names in two different sourcest."
     )
     filt_sim = sim_df[sim_df.value > threshold]
 
@@ -129,14 +124,30 @@ def create_node_info_and_filtered_edgelist(
     # getting unique values for sources in new edgelist
     unique_source = edgelist.groupby("source").count().reset_index()[["source"]]
 
-    node_data = industry[industry.description.isin(unique_source.source)][
-        ["symbol", "description", "gics sector"]
+    node_data = financials[financials.company_name.isin(unique_target.target)][
+        [
+            "identifier",
+            "company_name",
+            "gics_sector_name",
+            "gics_industry_name",
+            "total_assets",
+            "total_liabilities",
+            "total_equity",
+        ]
     ]
-    node_data.columns = ["symbol", "name", "sector"]
+    node_data.columns = [
+        "ticker",
+        "name",
+        "sector",
+        "industry",
+        "assets",
+        "liabilities",
+        "equity",
+    ]
     node_data.to_csv(node_info_path, index=False)
     logging.info(f"node info csv is written to file at {node_info_path}")
 
-    edgelist_filt = edgelist[edgelist.source.isin(node_data.name)]
+    edgelist_filt = edgelist[edgelist.target.isin(node_data.name)]
     edgelist_filt.to_csv(edgelist_path, index=False)
     logging.info(f"filtered final edgelist is written to file at {edgelist_path}")
 
@@ -163,13 +174,13 @@ def replace_names_in_edgelist(edgelist, map_df):
     Function to replace names with their similar mapping in the edgelist.
     """
 
-    map_dict = dict(zip(map_df.source, map_df.description))
+    map_dict = dict(zip(map_df.target, map_df.company_name))
     edgelist.loc[edgelist.source.isin(map_dict.keys()), "source"] = edgelist[
         edgelist.source.isin(map_dict.keys())
     ]["source"].map(map_dict, na_action="ignore")
 
-    edgelist.loc[edgelist.source.isin(map_dict.keys()), "target"] = edgelist[
-        edgelist.source.isin(map_dict.keys())
+    edgelist.loc[edgelist.target.isin(map_dict.keys()), "target"] = edgelist[
+        edgelist.target.isin(map_dict.keys())
     ]["target"].map(map_dict, na_action="ignore")
 
     return edgelist

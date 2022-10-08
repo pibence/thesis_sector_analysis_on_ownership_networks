@@ -5,6 +5,7 @@ import os
 from bs4 import BeautifulSoup
 import re
 import datetime
+from tqdm import tqdm
 
 
 logging.basicConfig(
@@ -140,14 +141,14 @@ def parse_filing(path):
         )
 
 
-def create_edgelist_from_df(df, holder):
+def create_edgelist_from_df(df):
     """
-    Function that takes the returned df of parse_filing and appends a new column
-    that is called target with the name of the holder company. Also the name
-    of issuer column is renamed to source.
+    Function that takes the returned df of parse_filing and remanes the columns.
+    The holder company is the source of the edge while the issuer of the stock
+    is the target to represent ownership structure.
     """
 
-    df.columns = ["source", "value", "target"]
+    df.columns = ["target", "value", "source"]
     edgelist = df[["source", "target", "value"]]
     return edgelist
 
@@ -166,7 +167,7 @@ def parse_filings_to_edgelists(
 
     edgelists = []
     failed_paths = []
-    for i, holder in enumerate(fils):
+    for i, holder in enumerate(tqdm(fils)):
         # get path, name for each 13f reporter company
         path = get_path_for_txt(filings_folder, holder)
 

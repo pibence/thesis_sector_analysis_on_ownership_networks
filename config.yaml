@@ -3,6 +3,7 @@ data:
   13f_submitters : data/2022q2_form13f/SUBMISSION.tsv
   13_filings : data/13f/sec-edgar-filings/
   edgelists : data/edgelist/
+  financials : data/refinitiv/
   error_csv_path : data/failed_to_load_paths.csv
   node_info_path : data/final/node_info.csv
   edgelist_path : data/final/edgelist.csv
