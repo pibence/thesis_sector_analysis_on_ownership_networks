@@ -52,34 +52,6 @@ def download_13_filing_helper(cik, dl):
         )
 
 
-def create_name_to_cik_csv(submitters):
-    """
-    Function lists the companies that submitted the 13f form and writes a csv
-    that contains the name and CIK of the given holder.
-    NOT IN USE.
-    """
-
-    institutions = pd.read_csv(submitters, sep="\t", dtype={"CIK": str})
-    institutions.columns = institutions.columns.str.lower()
-    institutions = (
-        institutions.groupby(["name", "cik"]).count().reset_index()[["name", "cik"]]
-    )
-    institutions[["name"]] = institutions[["name"]].apply(lambda x: x.str.lower())
-
-    institutions.to_csv("data/name_to_cik.csv", index=False)
-
-
-def create_name_to_cik_dict(name_to_cik_path):
-    """
-    Function to create a dictionary from ciks and names about the holder companies.
-    NOT IN USE.
-    """
-
-    df = pd.read_csv(name_to_cik_path, dtype={"cik": str})
-    ret_dict = dict(zip(df.cik, df.name))
-    return ret_dict
-
-
 def get_submitters(submitter_path):
     """
     Function to retrieve the CIK-s for all companies who filed 13f report in
