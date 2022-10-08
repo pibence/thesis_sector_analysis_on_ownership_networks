@@ -8,42 +8,47 @@ import datetime
 
 
 logging.basicConfig(
-    filename="logs/load.log",
+    filename="logs/load_13f.log",
     level=logging.DEBUG,
     format="%(asctime)s:%(levelname)s:%(message)s",
 )
 
 
-def download_13f_filings(name_to_cik: dict, data_folder, filings_folder):
+def download_13f_filings(submitters_path, data_folder, result_folder):
     """
     Downloader function that iterates through the companies that submitted the
     13f form and downloads them into a given folder structure.
     """
 
+    submitters = get_submitters(submitters_path)
     dl = Downloader(f"{data_folder}13f")
-    if os.path.exists(filings_folder):
-        existing = os.listdir(filings_folder)
+    if os.path.exists(result_folder):
+        existing = os.listdir(result_folder)
 
-    for cik, name in name_to_cik.items():
-        if os.path.exists(filings_folder):
+    for cik in submitters():
+        if os.path.exists(result_folder):
             if cik not in existing:
-                download_13_filing_helper(cik, name, dl)
+                download_13_filing_helper(cik, dl)
+            else:
+                logging.info(
+                    f"skipping download for {cik} as it has been already downloaded"
+                )
         else:
-            download_13_filing_helper(cik, name, dl)
+            download_13_filing_helper(cik, dl)
 
     return 1
 
 
-def download_13_filing_helper(cik, name, dl):
+def download_13_filing_helper(cik, dl):
     try:
         res = dl.get("13F-HR", cik, amount=1)
         if res == 1:
-            logging.info(f"Data downloaded for {name}, with cik {cik}")
+            logging.info(f"Data downloaded for cik {cik}")
         if res == 0:
             logging.info(f"cannot find 13f filing for {cik}")
     except Exception as e:
         logging.warning(
-            f"when trying to download 13f filings for {name} with cik {cik} the following error occured: {e}"
+            f"when trying to download 13f filings for cik {cik} the following error occured: {e}"
         )
 
 
@@ -51,6 +56,7 @@ def create_name_to_cik_csv(submitters):
     """
     Function lists the companies that submitted the 13f form and writes a csv
     that contains the name and CIK of the given holder.
+    NOT IN USE.
     """
 
     institutions = pd.read_csv(submitters, sep="\t", dtype={"CIK": str})
@@ -66,11 +72,26 @@ def create_name_to_cik_csv(submitters):
 def create_name_to_cik_dict(name_to_cik_path):
     """
     Function to create a dictionary from ciks and names about the holder companies.
+    NOT IN USE.
     """
 
     df = pd.read_csv(name_to_cik_path, dtype={"cik": str})
     ret_dict = dict(zip(df.cik, df.name))
     return ret_dict
+
+
+def get_submitters(submitter_path):
+    """
+    Function to retrieve the CIK-s for all companies who filed 13f report in
+    the last year.
+    """
+
+    submission = pd.read_csv(submitter_path, sep="\t", dtype={"CIK": str})
+    ret_list = submission[
+        submission.SUBMISSIONTYPE.isin(["13F-HR", "13F-HR/A"])
+    ].CIK.unique
+
+    return ret_list
 
 
 def get_path_for_txt(filings_folder, fold):
@@ -103,6 +124,10 @@ def parse_filing(path):
         date = datetime.datetime.strptime(date_str, "%m-%d-%Y").date()
 
         if date > datetime.date(2022, 6, 1):
+            # finding name if form filer company
+            formdata = soup.find_all("formdata")[0]
+            holder = formdata.find("filingmanager").find("name").text
+
             infotables = soup.find_all(re.compile("infotable"))
 
             records = []
@@ -125,6 +150,9 @@ def parse_filing(path):
             df[["name_of_issuer"]] = df[["name_of_issuer"]].apply(
                 lambda x: x.str.lower()
             )
+
+            # adding holder info to dataframe
+            df["holder"] = holder
             logging.info(f"holdings parsed from file {path}")
 
             return df
@@ -147,14 +175,13 @@ def create_edgelist_from_df(df, holder):
     of issuer column is renamed to source.
     """
 
-    df.columns = ["source", "value"]
-    df["target"] = holder
+    df.columns = ["source", "value", "target"]
     edgelist = df[["source", "target", "value"]]
     return edgelist
 
 
 def parse_filings_to_edgelists(
-    filings_folder, name_to_cik_path, error_csv_path, edgelist_path
+    filings_folder, error_csv_path, edgelist_path, chunksize
 ):
     """
     Function that lists all existing 13f reports and parses each of them into
@@ -164,23 +191,20 @@ def parse_filings_to_edgelists(
     """
 
     fils = os.listdir(filings_folder)
-    name_to_cik_dict = create_name_to_cik_dict(name_to_cik_path)
-    chunksize = 50
 
     edgelists = []
     failed_paths = []
     for i, holder in enumerate(fils):
         # get path, name for each 13f reporter company
         path = get_path_for_txt(filings_folder, holder)
-        name = name_to_cik_dict[holder]
 
         # parse the txt filing dataframe, if succeeds, parse it to edgelist
         parsed_df = parse_filing(path)
 
         if parsed_df is not None:
-            edgelists.append(create_edgelist_from_df(parsed_df, name))
+            edgelists.append(create_edgelist_from_df(parsed_df))
         else:
-            logging.info(f"Could not parse holdings data for {name}")
+            logging.info(f"Could not parse holdings data for {path}")
             failed_paths.append(path)
 
         # writing the concatenated edgelists to files after a given chunksize to

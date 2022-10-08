@@ -1,6 +1,6 @@
 data:
   data_folder: data/
-  13f_submitters : data/2022q2_form13f/OTHERMANAGER.tsv
+  13f_submitters : data/2022q2_form13f/SUBMISSION.tsv
   13_filings : data/13f/sec-edgar-filings/
   name_to_cik : data/name_to_cik.csv
   edgelists : data/edgelist/
@@ -13,3 +13,4 @@ data:
 
 parameters:
   similarity_treshold : 0.9
+  chunksize : 50
