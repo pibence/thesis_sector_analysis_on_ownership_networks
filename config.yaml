@@ -19,20 +19,20 @@ parameters:
 
 lists:
   wrong_nodes:
-    - ubs americas
-    - bnp paribas arbitrage sa
-    - dnb as
-    - westpac banking
-    - capital fund s a
-    - border to coast pensions partnership
-    - liontrust investment partners llp
-    - ubs oconnor
-    - westend advisors
-    - kiwi wealth investments limited partnership
-    - venture visionary partners
-    - kinneret advisory
-    - adell harriman carpenter
-    - tower bridge advisors
-    - fishman jay a mi
-    - blue edge capital
-    - rowland investment counselad
+    - ubs_americas
+    - bnp_paribas_arbitrage_sa
+    - dnb_as
+    - westpac_banking
+    - capital_fund_s_a
+    - border_to_coast_pensions_partnership
+    - liontrust_investment_partners_llp
+    - ubs_oconnor
+    - westend_advisors
+    - kiwi_wealth_investments_limited_partnership
+    - venture_visionary_partners
+    - kinneret_advisory
+    - adell_harriman_carpenter
+    - tower_bridge_advisors
+    - fishman_jay_a_mi
+    - blue_edge_capital
+    - rowland_investment_counselad

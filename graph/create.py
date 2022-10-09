@@ -93,25 +93,29 @@ def remove_nodes_wo_out_edge(g):
     return g
 
 
-def remove_edges_between_financial_sector(g):
+def remove_edges_between_sectors(g, is_financial=True):
     """
     Function that removes edges between the financial sector players to create a
     bipartite graph than can be projected later.
     """
 
     sectors = nx.get_node_attributes(g, "sector")
+    edges_to_remove = []
+
     # iterating through the nodes, checking if it is in the financial sector
     for node, sector in sectors.items():
-        if sector == "Financials":
+        if (sector == "Financials") ^ (not is_financial):
             # if the node is in the financial sector, listing its out edges
             for (u, v) in g.out_edges(node):
-                if g.nodes[v]["sector"] == "Financials":
+                if (g.nodes[v]["sector"] == "Financials") ^ (not is_financial):
                     # if the node where the edge leads is also in the financial sector
                     # decreasing the value of both nodes then deleting the edge
                     value = g[u][v]["value"]
                     # decreasing asset value for both nodes
                     g.nodes[u]["assets"] -= value
                     g.nodes[v]["assets"] -= value
-                    g.remove_edge(u, v)
+                    edges_to_remove.append((u, v))
+    # removing edges
+    g.remove_edges_from(edges_to_remove)
 
     return g
