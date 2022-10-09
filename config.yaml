@@ -5,12 +5,34 @@ data:
   edgelists : data/edgelist/
   financials : data/refinitiv/
   error_csv_path : data/failed_to_load_paths.csv
-  similarity_path : data/working_files/similarity.csv
+  similarity_path : data/working_files/similarity/
   edgelist_temp: data/working_files/edgelist.csv
   node_temp: data/working_files/nodes.csv
+  edgelist_full : data/working_files/edgelist_full.csv
+  similarity : data/working_files/similarity.csv
   node_path : data/final/nodes.csv
   edgelist_path : data/final/edgelist.csv
 
 parameters:
-  similarity_treshold : 0.9
+  similarity_threshold : 0.91
   chunksize : 50
+
+lists:
+  wrong_nodes:
+    - ubs americas
+    - bnp paribas arbitrage sa
+    - dnb as
+    - westpac banking
+    - capital fund s a
+    - border to coast pensions partnership
+    - liontrust investment partners llp
+    - ubs oconnor
+    - westend advisors
+    - kiwi wealth investments limited partnership
+    - venture visionary partners
+    - kinneret advisory
+    - adell harriman carpenter
+    - tower bridge advisors
+    - fishman jay a mi
+    - blue edge capital
+    - rowland investment counselad

@@ -69,3 +69,25 @@ def parse_financials_from_folder(folder_path):
     ret_df = pd.concat(df_list)
     ret_df.columns = ret_df.columns.str.lower()
     return ret_df
+
+
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i : i + n]
+
+
+def parse_similarities_from_folder(folder_path):
+    files = os.listdir(folder_path)
+
+    chunk_gen = chunks(files, 20)
+    df_list = []
+    for i, chunk in enumerate(chunk_gen):
+        for file in chunk:
+            fl = pd.read_csv(f"{folder_path}{file}")
+            df_list.append(fl[fl.value > 0.8])
+        logging.info(f"{i+1}. chunk read")
+
+    ret_df = pd.concat(df_list)
+    ret_df.columns = ret_df.columns.str.lower()
+    return ret_df

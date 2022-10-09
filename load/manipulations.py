@@ -2,8 +2,7 @@ import pandas as pd
 import jellyfish
 import itertools
 import logging
-from load.helpers import parse_csvs_from_folder, parse_financials_from_folder
-from tqdm import tqdm
+from load.helpers import parse_csvs_from_folder, parse_financials_from_folder, chunks
 
 logging.basicConfig(
     filename="logs/load.log",
@@ -76,12 +75,11 @@ def standardize_names(column):
     for char, value in spec_char_dict.items():
         ret_col = ret_col.str.replace(char, value, regex=False)
 
-    ret_col = ret_col.apply(lambda x: " ".join(x.split()))
-
     for name in corp_name_list:
         ret_col = ret_col.str.replace(name, "", regex=True)
 
     ret_col = ret_col.apply(lambda x: x.strip())
+    ret_col = ret_col.apply(lambda x: "_".join(x.split()))
 
     return ret_col
 
@@ -124,11 +122,13 @@ def create_similarity_csv(node_temp_path, edgelist_temp_path, sim_path):
     # getting unique values for sources in edgelist
     unique_target = edgelist.groupby("target").count().reset_index()[["target"]]
 
-    sim_df = calculate_similarity_df(financials.company_name, unique_target.target)
-    sim_df.to_csv(sim_path, index=False)
-    logging.info(
-        f"similarity measures are calculated for the names in two different sources, data is written to {sim_path}"
-    )
+    chunk_gen = chunks(financials.company_name, 50)
+    for i, chunk in enumerate(chunk_gen):
+        sim_df = calculate_similarity_df(chunk, unique_target.target)
+        sim_df.to_csv(f"{sim_path}{i+1}_chunk.csv", index=False)
+        logging.info(
+            f"similarity measures are calculated for {i+1}. chunk, data is written to {sim_path}{i}_chunk.csv"
+        )
 
     return 1
 
@@ -147,7 +147,7 @@ def create_node_info_and_filtered_edgelist(
     financials = pd.read_csv(node_temp_path)
     edgelist = pd.read_csv(edgelist_temp_path)
 
-    filt_sim = sim_df[sim_df.value > threshold]
+    filt_sim = sim_df[sim_df.value >= threshold]
 
     edgelist = replace_names_in_edgelist(edgelist, filt_sim)
     logging.info("names are substituted in the edgelist")
@@ -175,10 +175,15 @@ def create_node_info_and_filtered_edgelist(
         "liabilities",
         "equity",
     ]
+
+    # removing duplicate nodes from node list
+    node_data = node_data[~node_data.duplicated("name")]
     node_data.to_csv(node_path, index=False)
     logging.info(f"node info csv is written to file at {node_path}")
 
     edgelist_filt = edgelist[edgelist.target.isin(node_data.name)]
+    # removing duplicate edges with summarizing the weight on them
+    edgelist_filt = edgelist_filt.groupby(["source", "target"]).sum().reset_index()
     edgelist_filt.to_csv(edgelist_path, index=False)
     logging.info(f"filtered final edgelist is written to file at {edgelist_path}")
 
@@ -195,9 +200,14 @@ def calculate_similarity_df(column1, column2):
 
     name_list = []
     for com in combinations:
-        name_list.append(
-            [com[0], com[1], jellyfish.jaro_winkler_similarity(com[0], com[1])]
-        )
+        try:
+            name_list.append(
+                [com[0], com[1], jellyfish.jaro_winkler_similarity(com[0], com[1])]
+            )
+        except Exception as e:
+            logging.warning(
+                f"could not calculate similarity measure for {com[0]}, {com[1]} because the following error occured: {e}"
+            )
 
     sim_df = pd.DataFrame(name_list, columns=["company_name", "target", "value"])
     return sim_df
@@ -217,4 +227,18 @@ def replace_names_in_edgelist(edgelist, map_df):
         edgelist.target.isin(map_dict.keys())
     ]["target"].map(map_dict, na_action="ignore")
 
+    return edgelist
+
+
+def update_values_in_edgelist(edgelist, nodes):
+    """
+    Function that takes the list of nodes as input parameter and divides the
+    value in the edgelist by 1000 as it has not been done in the filing. Returns
+    the updated edgelist as a dataframe.
+    """
+
+    for node in nodes:
+        edgelist.loc[edgelist.source == node, "value"] = (
+            edgelist[edgelist.source == node].value / 1000
+        )
     return edgelist

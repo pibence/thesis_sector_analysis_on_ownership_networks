@@ -106,15 +106,16 @@ def parse_filing(path):
             records = []
             for table in infotables:
                 # iterating through all companies that are held by the 13f reporter,
-                # saving important data
-                dic = {}
-                dic["name_of_issuer"] = table.find(re.compile("nameofissuer")).text
-                dic["title_of_class"] = table.find(re.compile("titleofclass")).text
-                dic["cusip"] = table.find(re.compile("cusip")).text
-                dic["value"] = int(
-                    table.find(re.compile("value")).text.replace(",", "")
-                )
-                records.append(dic)
+                # saving important data, but dropping values if its an option
+                if not table.find(re.compile("putcall")):
+                    dic = {}
+                    dic["name_of_issuer"] = table.find(re.compile("nameofissuer")).text
+                    dic["title_of_class"] = table.find(re.compile("titleofclass")).text
+                    dic["cusip"] = table.find(re.compile("cusip")).text
+                    dic["value"] = int(
+                        table.find(re.compile("value")).text.replace(",", "")
+                    )
+                    records.append(dic)
 
             df = pd.DataFrame(records)
 
