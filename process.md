@@ -52,3 +52,34 @@ Try shocking individual entities as well --> not just systemic shock but idiosyn
 ### Micro level metrics to calculate for given nodes
 * degree centrality
 * betweenness centrality
+
+
+# Summary of data cleaning, modelling process
+## Downloading the data
+1. 13f filings from SEC
+2. Sector, financial data from Refinitiv Eikon
+
+## Cleaning the data
+1. string similarity measures are calculated to match the two databases
+2. creating filtered edgelist and node list 
+TODO update tis part
+
+## Creating the graph
+1. The edgelist and node list is further filtered to remove nodes that are from
+the financial sector but has not submitted 13f filings thus the value of the holdings is not possible to calculate.
+2. Removing self-loop edges
+3. adding attributes to the nodes
+    - For financial companies the total assets are the summarized value of the sec filings
+    - For non-financial companies its the total assets from Refinitiv Eikon database
+4. Removing edges within the financial sector by decreasing the value of both holder and held companies
+5. Removing edges between non-financial companies without decreasing their value
+    - reason: these edges are not significant or they are a result of wrong name matching (that was necessary due to discrepancy in data sources)
+6. Projecting the bipartite graph to eliminate the financial companies and focus on the other sectors
+    - from directed graph we get an undirected one
+    - there is a link between two nodes of they are held by the same financial company
+    - principles for edge weigts:
+        - it should be as simple as possible
+        - if a financial institution holds more from one firm (in absolute terms), the weight should increase
+        - if a portfolio suffers loss from one asset, we suppose they have to decrease their other held assets with the same amount --> this way they play only the role of an intermediary, the loss is propagated through.
+        - if a portfolio is larger, the propagated loss should be smaller for the same owned asset size
+    - the weight of the edge (u,v) is calculated for nodes (u, v, f), where the edgelist is: f->u, w(fu), f->v, w(fv) and the asset value of the nodes are V(u), V(v), V(f) respectively: w(new) = sum w(fu) * w(fv) /V(f) for f in portfolios holding both u,v

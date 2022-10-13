@@ -2,6 +2,7 @@ import networkx as nx
 import pandas as pd
 from load.manipulations import update_values_in_edgelist
 import logging
+from tqdm import tqdm
 
 logging.basicConfig(
     filename="logs/graph.log",
@@ -80,7 +81,8 @@ def remove_financials_not_in_source(edgelist, nodes):
     return edgelist, nodes
 
 
-def remove_nodes_wo_out_edge(g):
+def remove_nodes_wo_out_edge(G):
+    g = G.copy()
     # filtering for financial nodes that have no out edges, removing them
     total_nodes = set(g.nodes())
     nodes_with_sector = set(nx.get_node_attributes(g, "sector").keys())
@@ -93,21 +95,21 @@ def remove_nodes_wo_out_edge(g):
     return g
 
 
-def remove_edges_between_sectors(g, is_financial=True):
+def remove_edges_within_sectors(G, is_financial=True):
     """
     Function that removes edges between the financial sector players to create a
     bipartite graph than can be projected later.
     """
-
+    g = G.copy()
     sectors = nx.get_node_attributes(g, "sector")
     edges_to_remove = []
 
     # iterating through the nodes, checking if it is in the financial sector
     for node, sector in sectors.items():
-        if (sector == "Financials") ^ (not is_financial):
+        if (sector == "Financials") & (is_financial):
             # if the node is in the financial sector, listing its out edges
             for (u, v) in g.out_edges(node):
-                if (g.nodes[v]["sector"] == "Financials") ^ (not is_financial):
+                if g.nodes[v]["sector"] == "Financials":
                     # if the node where the edge leads is also in the financial sector
                     # decreasing the value of both nodes then deleting the edge
                     value = g[u][v]["value"]
@@ -115,7 +117,70 @@ def remove_edges_between_sectors(g, is_financial=True):
                     g.nodes[u]["assets"] -= value
                     g.nodes[v]["assets"] -= value
                     edges_to_remove.append((u, v))
+
+        elif (sector != "Financials") & (not is_financial):
+            # if the node is not from the financial sector, removing all edges
+            # coming from it without decreasing its values.
+            for (u, v) in g.out_edges(node):
+                edges_to_remove.append((u, v))
+
     # removing edges
     g.remove_edges_from(edges_to_remove)
 
     return g
+
+
+def create_projected_graph(G):
+    """
+    Slightly rewritten version of networkx's generic_weighted_projected_graph function
+    to handle directed-indirect conversion within the function. The input is the
+    original graph that is modified and projected to the set of nodes, namely the not
+    financial nodes, with a specific weight function that is defined outside this function.
+    """
+
+    H = remove_edges_within_sectors(G, is_financial=True)
+    logging.debug("edges within the financial sector are removed")
+    I = remove_edges_within_sectors(H, is_financial=False)
+    logging.debug("edges within the non-financial sectors are removed.")
+
+    nodes_to_proj_on = [n for n in I.nodes() if I.nodes[n]["sector"] != "Financials"]
+    logging.debug("nodes to project on are determined")
+
+    g_undirected = I.to_undirected()
+    g = nx.Graph()
+    g.graph.update(g_undirected.graph)
+    g.add_nodes_from((n, g_undirected.nodes[n]) for n in nodes_to_proj_on)
+    logging.debug("nodes are added to new graph")
+
+    for u in tqdm(nodes_to_proj_on):
+        nbrs2 = {n for nbr in set(g_undirected[u]) for n in g_undirected[nbr]} - {u}
+        for v in nbrs2:
+            weight = my_weight(I, u, v)
+            g.add_edge(u, v, weight=weight)
+    logging.debug("Weights are calculated and addded to the graph")
+
+    return g
+
+
+def my_weight(G, u, v):
+    """
+    Helper function for projecting the bipartite graph that determines the
+    weights of the edges in the new graph by multiplying the two edge weights
+    with the asset value of the mutual holder company, and summarizes these weights
+    for every node pair among the mutual holders.
+    """
+
+    u_holders = set([f for (f, h) in G.in_edges(u)])
+    v_holders = set([f for (f, h) in G.in_edges(v)])
+    common_holders = u_holders.intersection(v_holders)
+
+    w = 0
+    for holder in common_holders:
+        if G.nodes[holder]["assets"] > 0:
+            w += (
+                G[holder][u]["value"]
+                * G[holder][v]["value"]
+                / G.nodes[holder]["assets"]
+            )
+
+    return w
