@@ -40,7 +40,11 @@ def plot_graph_features(G: nx.graph, loglog=True):
     # setting design
     ax.set_xlabel("degree", size=14)
     ax.set_ylabel("frequency", size=14)
-    ax.set_title("Degree distribution on a log-log scale", size=18)
+    if loglog:
+        ax.set_title("Degree distribution on a log-log scale", size=18)
+    else:
+        ax.set_title("Degree distribution", size=18)
+
     ax.tick_params(labelsize=12)
 
     if loglog == True:

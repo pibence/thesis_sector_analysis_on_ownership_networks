@@ -37,5 +37,21 @@ lists:
     - blue_edge_capital
     - rowland_investment_counselad
 
+  sectors:
+    - Consumer Discretionary
+    - Communication Services
+    - Industrials
+    - Health Care
+    - Information Technology 
+    - Materials
+    - Utilities
+    - Consumer Staples
+    - Energy
+    - Real Estate
+
 graph:
   graph_path: "data/graphs/projected.gexf"
+
+outputs:
+  descriptive_table : data/outputs/decriptive_table.csv
+  sector_analysis : data/outputs/sector_analysis.csv
