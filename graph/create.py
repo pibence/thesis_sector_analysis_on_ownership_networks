@@ -130,7 +130,7 @@ def remove_edges_within_sectors(G, is_financial=True):
     return g
 
 
-def create_projected_graph(G):
+def create_projected_graph(G, to_file=False, graph_path=None):
     """
     Slightly rewritten version of networkx's generic_weighted_projected_graph function
     to handle directed-indirect conversion within the function. The input is the
@@ -159,7 +159,11 @@ def create_projected_graph(G):
             g.add_edge(u, v, weight=weight)
     logging.debug("Weights are calculated and addded to the graph")
 
-    return g
+    if to_file:
+        nx.write_gexf(g, graph_path)
+        logging.debug(f"graph written to file at {graph_path}")
+    else:
+        return g
 
 
 def my_weight(G, u, v):
