@@ -4,7 +4,7 @@ import pandas as pd
 import seaborn as sns
 
 
-def creating_node_df(G: nx.graph) -> pd.DataFrame:
+def creating_node_df(G: nx.Graph) -> pd.DataFrame:
     """
     This function takes the G as input and returns a dataframe
     containing information on the nodes such as degree.
@@ -20,7 +20,7 @@ def creating_node_df(G: nx.graph) -> pd.DataFrame:
     return node_df
 
 
-def plot_graph_features(G: nx.graph, loglog=True):
+def plot_graph_features(G: nx.Graph, loglog=True):
     """
     The function takes the G as input and returns the degree distribution
     plot.

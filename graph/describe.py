@@ -37,10 +37,12 @@ def create_descriptive_table(graphs: list):
             ret_dict["is_connected"] = nx.is_connected(graph)
             largest_cc = max(nx.connected_components(graph), key=len)
 
+        s = graph.subgraph(largest_cc).copy()
+
         ret_dict["largest_comp_frac"] = len(largest_cc) / ret_dict["nodes"]
         logging.debug("Low calculating capacity basic metrics are calculated")
 
-        ret_dict["diameter_of_largest_cc"] = nx.diameter(largest_cc)
+        ret_dict["diameter_of_largest_cc"] = nx.diameter(s)
         logging.debug(f"diameter is calculated for the {i}. graph")
         ret_dict["clustering_coefficient"] = nx.average_clustering(graph)
         logging.debug(f"clustering coefficient is calculated for the {i}. graph")
@@ -78,7 +80,7 @@ def analyze_sectors(g, sectors):
         ret_dict["total_sector_size"] = total_sector_size
         ret_dict["rel_sector_size"] = total_sector_size / total_market_size
         logging.debug(f"Node and size info for {sector} is added.")
-        ret_dict["clustering_coefficient"] = nx.average_clustering(g)
+        ret_dict["clustering_coefficient"] = nx.average_clustering(s)
         logging.debug(f"Clustering coefficient for {sector} is added.")
 
         edges_within_sector = len(s.edges())

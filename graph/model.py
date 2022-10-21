@@ -1,76 +1,112 @@
 import networkx as nx
 import numpy as np
 import pandas as pd
-
+from typing import Union
 import logging
+import os
+
 
 logging.basicConfig(
-    filename="logs/graph.log",
+    filename="logs/shock_simulation.log",
     level=logging.DEBUG,
     format="%(asctime)s:%(levelname)s:%(message)s",
     force=True,
 )
 
 
-def propagate_shock_from_one_node(G, node, shock, fraction_to_propagate, counter=0):
-
+def propagate_default(g, default_threshold):
     """
-    Not in use, not working currently!
+    Function that screens the whole graph and propagates the shock through from
+    the defaulted nodes. The function returns an updated graph with the defaulted
+    nodes indicated.
     """
-    # TODO add new graph as a returned value
-    if shock < 10:
-        pass
 
-    elif G.nodes[node]["assets"] > 0:
-        G.nodes[node]["assets"] -= shock
-
-        weight_sum = 0
-        for neighbor in G.neighbors(node):
-            weight_sum += G[node][neighbor]["weight"]
-
-        for neighbor in G.neighbors(node):
-            proportion = G[node][neighbor]["weight"] / weight_sum
-            shock_to_pass = shock * proportion * fraction_to_propagate
-            return propagate_shock_from_one_node(
-                G, neighbor, shock_to_pass, fraction_to_propagate, counter + 1
-            )
-    if counter == 0:
-        return G
-
-
-def propagate_default(g, failure_threshold):
-    
     round = 1
     new_defaulter = True
 
     while new_defaulter:
         new_defaulter = False
 
-        default = [node for node in g.nodes() if g.nodes[node]['default_round']==round] 
-        
+        default = [
+            node for node in g.nodes() if g.nodes[node]["default_round"] == round
+        ]
+
         round += 1
-        
+
         for n in default:
 
-            # calculating the sum of weights where the edge leads to a non-defaulted node    
+            # calculating the sum of weights where the edge leads to a non-defaulted node
             weight_sum = 0
 
             for neighbor in g.neighbors(n):
-                if not g.nodes[neighbor]['default_round']:
+                if not g.nodes[neighbor]["default_round"]:
                     weight_sum += g[n][neighbor]["weight"]
 
             if weight_sum == 0:
                 continue
             else:
                 for neighbor in g.neighbors(n):
-                    if not g.nodes[neighbor]['default_round']:
-                        proportion = g[n][neighbor]['weight'] / weight_sum
-                        g.nodes[neighbor]['assets'] -= g.nodes[n]['equity'] * proportion
-                        g.nodes[neighbor]['equity'] -= g.nodes[n]['equity'] * proportion
+                    if not g.nodes[neighbor]["default_round"]:
+                        proportion = g[n][neighbor]["weight"] / weight_sum
+                        g.nodes[neighbor]["assets"] -= (
+                            g.nodes[n]["equity_orig"] * proportion
+                        )
+                        g.nodes[neighbor]["equity"] -= (
+                            g.nodes[n]["equity_orig"] * proportion
+                        )
 
-                        if g.nodes[neighbor]['equity'] < g.nodes[neighbor]['equity'] * failure_threshold:
+                        if (
+                            g.nodes[neighbor]["equity"]
+                            < g.nodes[neighbor]["equity"] * default_threshold
+                        ):
                             new_defaulter = True
-                            g.nodes[neighbor]['default_round'] = round
+                            g.nodes[neighbor]["default_round"] = round
 
     return g
-             
+
+
+def generate_shock_from_pareto(
+    g: nx.Graph,
+    node_list: Union[list, str],
+    alpha: float,
+    scale: float,
+    default_threshold: float,
+):
+
+    if isinstance(node_list, str):
+        node_list = [node_list]
+
+    shock_list = (np.random.pareto(alpha, len(node_list)) + 1) * scale
+
+    for i, n in enumerate(node_list):
+        g.nodes[n]["assets"] *= np.exp(-shock_list[i])
+        g.nodes[n]["equity"] = g.nodes[n]["assets"] - g.nodes[n]["liabilities"]
+
+        if g.nodes[n]["equity"] < g.nodes[n]["equity"] * default_threshold:
+            g.nodes[n]["default_round"] = 1
+
+    return g
+
+
+def simulate_shocks_from_pareto(
+    g: nx.Graph,
+    node_list: Union[list, str],
+    alpha: float,
+    scale: float,
+    default_threshold: float,
+    repeat: int,
+):
+
+    for i in range(0, repeat):
+        h = g.copy()
+        nx.set_node_attributes(h, None, "default_round")
+        nx.set_node_attributes(h, dict(h.nodes(data="equity")), "equity_orig")
+        g_shocked = generate_shock_from_pareto(
+            h, node_list, alpha, scale, default_threshold
+        )
+        logging.debug(f"{i+1}. iteration: initial shock is generated")
+
+        g_final = propagate_default(g_shocked, default_threshold)
+        logging.debug(f"{i+1}. iteration: initial shock is propagated")
+
+    return g_final

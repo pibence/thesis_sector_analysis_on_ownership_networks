@@ -16,6 +16,7 @@ data:
 parameters:
   similarity_threshold : 0.91
   chunksize : 50
+  failure_threshold : 0.7
 
 lists:
   wrong_nodes:
@@ -55,3 +56,4 @@ graph:
 outputs:
   descriptive_table : data/outputs/decriptive_table.csv
   sector_analysis : data/outputs/sector_analysis.csv
+  simulations : data/simulations/
