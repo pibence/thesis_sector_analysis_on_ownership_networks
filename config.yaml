@@ -56,4 +56,5 @@ graph:
 outputs:
   descriptive_table : data/outputs/decriptive_table.csv
   sector_analysis : data/outputs/sector_analysis.csv
-  simulations : data/simulations/
+  simulations : data/outputs/simulations/
+  metadata_path : data/outputs/simulations/simulations_summary.csv
