@@ -20,9 +20,10 @@ logging.basicConfig(
 
 def propagate_default(g, default_threshold):
     """
-    Function that screens the whole graph and propagates the shock through from
-    the defaulted nodes. The function returns an updated graph with the defaulted
-    nodes indicated.
+    Function that screens the whole graph and propagates the shock from
+    the defaulted nodes to the neighboring nodes. The iteration goes until there is
+    a new defaulter firm in an iteration. The function returns an updated graph
+    with the round of default and updated asset, equity values.
     """
 
     round = 1
@@ -76,6 +77,12 @@ def generate_shock_from_pareto(
     scale: float,
     default_threshold: float,
 ):
+    """
+    The function generates shocks on one or multiple nodes from pareto distribution.
+    The loss is calculated, the asset and equity values are updated and if equity
+    value falls below the given threshold, the default is indicated. It returns
+    the updated graph.
+    """
 
     if isinstance(node_list, str):
         node_list = [node_list]
@@ -100,8 +107,16 @@ def simulate_shocks_from_pareto(
     default_threshold: float,
     repeat: int,
     simulation_path: str,
-    metadata_path,
+    metadata_path: str,
 ):
+    """
+    Main function that generates shock for one sector and then propagates it
+    through the whole graph. The function applies Monte Carlo simulation and every
+    run is saved to a folder in the format of feather files containing the
+    dataframe from the updated graph with every node attribute. The metadata
+    about the run (shock parameters, default threshold, number of iterations, path, etc.)
+    are also appended to a metadata file.
+    """
 
     dir = datetime.now().strftime("%Y_%m_%d_%H%M%S")
     path = f"{simulation_path}{dir}"
@@ -134,8 +149,9 @@ def simulate_shocks_from_pareto(
         scale,
         default_threshold,
         repeat,
+        dir,
     )
-    logging.debug(f"metadata is saved for run {dir}")
+    logging.debug(f"metadata is saved for {sector} sector, run {dir}")
 
     return 1
 
@@ -143,7 +159,7 @@ def simulate_shocks_from_pareto(
 def save_graph_to_feather(g, path, iteration):
 
     df = pd.DataFrame.from_dict(dict(g.nodes(data=True)), orient="index")
-    df = df.reset_index(names="name")
+    df = df.reset_index(drop=True)
 
     df.to_feather(f"{path}/{iteration}.feather", compression="zstd")
 
@@ -157,6 +173,7 @@ def append_simulation_metadata_to_csv(
     scale_param,
     default_threshold,
     no_of_iterations,
+    folder_name,
 ):
     new_line = [
         sector,
@@ -166,6 +183,7 @@ def append_simulation_metadata_to_csv(
         scale_param,
         default_threshold,
         no_of_iterations,
+        folder_name,
     ]
 
     if os.path.isfile(path):
@@ -182,6 +200,35 @@ def append_simulation_metadata_to_csv(
                 "scale_param",
                 "default_threshold",
                 "no_of_iterations",
+                "folder_name",
             ]
             writer.writerow(header)
             writer.writerow(new_line)
+
+
+def create_shock_for_every_sector(
+    g: nx.Graph,
+    alpha: float,
+    scale: float,
+    default_threshold: float,
+    repeat: int,
+    simulation_path: str,
+    metadata_path: str,
+    sectors_list: str,
+):
+    """
+    Main function that runs the monte carlo simulation for each sector.
+    """
+
+    for sector in sectors_list:
+        simulate_shocks_from_pareto(
+            g,
+            sector,
+            alpha,
+            scale,
+            default_threshold,
+            repeat,
+            simulation_path,
+            metadata_path,
+        )
+    return 1

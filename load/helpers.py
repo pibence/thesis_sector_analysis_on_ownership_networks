@@ -32,6 +32,16 @@ def parse_csvs_from_folder(folder_path):
     return ret_df
 
 
+def read_simulation_data(simulation_path, folder_name):
+
+    df_list = []
+    path = f"{simulation_path}/{folder_name}"
+    for file in os.listdir(path):
+        df_list.append(pd.read_feather(f"{path}/{file}"))
+
+    return df_list
+
+
 def parse_financials_from_folder(folder_path):
     """
     Function that parses together the data containing financial info and cleanes it.
