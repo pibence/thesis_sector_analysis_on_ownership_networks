@@ -5,7 +5,11 @@ from typing import Union
 import logging
 import os
 import csv
+from multiprocessing import Pool
+from functools import partial
 from datetime import datetime
+from time import time
+
 
 from .describe import get_sector_nodes
 
@@ -42,7 +46,6 @@ def propagate_default(g, default_threshold):
 
             # calculating the sum of weights where the edge leads to a non-defaulted node
             weight_sum = 0
-
             for neighbor in g.neighbors(n):
                 if not g.nodes[neighbor]["default_round"]:
                     weight_sum += g[n][neighbor]["weight"]
@@ -87,6 +90,7 @@ def generate_shock_from_pareto(
     if isinstance(node_list, str):
         node_list = [node_list]
 
+    np.random.seed()
     shock_list = (np.random.pareto(alpha, len(node_list)) + 1) * scale
 
     for i, n in enumerate(node_list):
@@ -99,6 +103,34 @@ def generate_shock_from_pareto(
     return g
 
 
+def simulate_one_shock_from_pareto(
+    g: nx.Graph,
+    node_list: str,
+    alpha: float,
+    scale: float,
+    default_threshold: float,
+    sector_path: str,
+    i: int,
+):
+    """Function that calls the shock generation and the propagation for the
+    given set of nodes. It also saves the result of the simulation to a given folder."""
+
+    h = g.copy()
+    nx.set_node_attributes(h, None, "default_round")
+    nx.set_node_attributes(h, dict(h.nodes(data="equity")), "equity_orig")
+
+    g_shocked = generate_shock_from_pareto(
+        h, node_list, alpha, scale, default_threshold
+    )
+
+    g_final = propagate_default(g_shocked, default_threshold)
+
+    save_graph_to_feather(g_final, sector_path, i + 1)
+    g_final = None
+    g_shocked = None
+    return 1
+
+
 def simulate_shocks_from_pareto(
     g: nx.Graph,
     sector: str,
@@ -106,55 +138,33 @@ def simulate_shocks_from_pareto(
     scale: float,
     default_threshold: float,
     repeat: int,
-    simulation_path: str,
-    metadata_path: str,
+    sector_path: str,
 ):
     """
     Main function that generates shock for one sector and then propagates it
     through the whole graph. The function applies Monte Carlo simulation and every
     run is saved to a folder in the format of feather files containing the
-    dataframe from the updated graph with every node attribute. The metadata
-    about the run (shock parameters, default threshold, number of iterations, path, etc.)
-    are also appended to a metadata file.
+    dataframe from the updated graph with every node attribute.
     """
 
-    dir = datetime.now().strftime("%Y_%m_%d_%H%M%S")
-    path = f"{simulation_path}{dir}"
-    os.mkdir(path)
-    logging.debug(
-        f"folder for the current run is created in the simulations folder under the name {dir}"
-    )
     node_list = get_sector_nodes(g, sector)
-    for i in range(0, repeat):
-        h = g.copy()
-        nx.set_node_attributes(h, None, "default_round")
-        nx.set_node_attributes(h, dict(h.nodes(data="equity")), "equity_orig")
-        g_shocked = generate_shock_from_pareto(
-            h, node_list, alpha, scale, default_threshold
-        )
-        logging.debug(f"{i+1}. iteration: initial shock is generated")
-
-        g_final = propagate_default(g_shocked, default_threshold)
-        logging.debug(f"{i+1}. iteration: initial shock is propagated")
-
-        save_graph_to_feather(g_final, path, i + 1)
-        g_shocked = None
-        g_final = None
-        logging.debug(f"{i+1}. iteration: graph is saved to feather")
-
-    append_simulation_metadata_to_csv(
-        metadata_path,
-        sector,
+    pool = Pool(8)
+    func = partial(
+        simulate_one_shock_from_pareto,
+        g,
         node_list,
-        "pareto",
         alpha,
         scale,
         default_threshold,
-        repeat,
-        dir,
+        sector_path,
     )
-    logging.debug(f"metadata is saved for {sector} sector, run {dir}")
-
+    pool.map(func, range(repeat))
+    """
+    for i in range(repeat):
+        simulate_one_shock_from_pareto(
+            g, node_list, alpha, scale, default_threshold, sector_path, i
+        )
+    """
     return 1
 
 
@@ -177,6 +187,7 @@ def append_simulation_metadata_to_csv(
     no_of_iterations,
     folder_name,
 ):
+    """Currently not in use."""
     new_line = [
         sector,
         len(shocked_nodes),
@@ -209,30 +220,62 @@ def append_simulation_metadata_to_csv(
             writer.writerow(new_line)
 
 
-def simulate_shock_for_every_sector(
+def simulate_shock_for_multiple_sectors(
     g: nx.Graph,
     alpha: float,
     scale: float,
     default_threshold: float,
     repeat: int,
     simulation_path: str,
-    metadata_path: str,
     sectors_list: str,
 ):
     """
-    Main function that runs the monte carlo simulation for each sector.
+    Main function that runs the monte carlo simulation for multiple given sectors.
+    For each simulation a new folder is created with the actual date and within them
+    each sector have their own folder. The metadata about the run (shock parameters,
+    default threshold, number of iterations, path, etc.) are also saved to a
+    metadata file.
     """
 
-    for sector in sectors_list:
+    dir = datetime.now().strftime("%Y_%m_%d_%H%M%S")
+    path = f"{simulation_path}{dir}"
+    os.mkdir(path)
+    logging.debug(
+        f"folder for the current run is created in the simulations folder under the name {dir}"
+    )
 
-        simulate_shocks_from_pareto(
-            g,
-            sector,
-            alpha,
-            scale,
-            default_threshold,
-            repeat,
-            simulation_path,
-            metadata_path,
+    start_time = time()
+
+    for sector in sectors_list:
+        sector_path = f"{path}/{sector}"
+        os.mkdir(sector_path)
+
+        logging.debug(
+            f"folder for {sector} sector is created in the current run folder."
         )
+        simulate_shocks_from_pareto(
+            g, sector, alpha, scale, default_threshold, repeat, sector_path
+        )
+        logging.info(f"Simulation for {sector} sector is finished.")
+
+    end_time = time()
+    runtime = end_time - start_time
+
+    metadata = {
+        "date_of_run": dir,
+        "shock_distribution": "pareto",
+        "alpha": alpha,
+        "scale_param": scale,
+        "default_threshold": default_threshold,
+        "no_of_iterations": repeat,
+        "results_path": path,
+        "time elapsed": runtime,
+    }
+
+    metadata_df = pd.DataFrame.from_dict(metadata, orient="index")
+    metadata_df.to_csv(f"{path}/metadata.csv", header=False)
+    logging.debug(
+        f"shock simulation is finished, metadata is saved. Elapsed time: {runtime} seconds"
+    )
+
     return 1

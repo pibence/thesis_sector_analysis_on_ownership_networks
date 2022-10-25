@@ -188,3 +188,10 @@ def my_weight(G, u, v):
             )
 
     return w
+
+
+def get_largest_cc(g):
+
+    largest_cc = max(nx.connected_components(g), key=len)
+    h = g.subgraph(largest_cc).copy()
+    return h
