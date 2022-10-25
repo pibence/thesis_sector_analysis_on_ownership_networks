@@ -138,6 +138,8 @@ def simulate_shocks_from_pareto(
         logging.debug(f"{i+1}. iteration: initial shock is propagated")
 
         save_graph_to_feather(g_final, path, i + 1)
+        g_shocked = None
+        g_final = None
         logging.debug(f"{i+1}. iteration: graph is saved to feather")
 
     append_simulation_metadata_to_csv(
@@ -194,6 +196,7 @@ def append_simulation_metadata_to_csv(
         with open(path, "a", newline="") as f:
             writer = csv.writer(f)
             header = [
+                "Sector",
                 "shocked_nodes",
                 "shock_dist",
                 "alpha",
@@ -206,7 +209,7 @@ def append_simulation_metadata_to_csv(
             writer.writerow(new_line)
 
 
-def create_shock_for_every_sector(
+def simulate_shock_for_every_sector(
     g: nx.Graph,
     alpha: float,
     scale: float,
@@ -221,6 +224,7 @@ def create_shock_for_every_sector(
     """
 
     for sector in sectors_list:
+
         simulate_shocks_from_pareto(
             g,
             sector,
