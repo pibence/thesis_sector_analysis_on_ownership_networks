@@ -5,7 +5,7 @@ from typing import Union
 import logging
 import os
 import csv
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 from functools import partial
 from datetime import datetime
 from time import time
@@ -131,6 +131,14 @@ def simulate_one_shock_from_pareto(
     return 1
 
 
+def save_graph_to_feather(g, path, iteration):
+
+    df = pd.DataFrame.from_dict(dict(g.nodes(data=True)), orient="index")
+    df = df.reset_index(drop=True)
+
+    df.to_feather(f"{path}/{iteration}.feather", compression="zstd")
+
+
 def simulate_shocks_from_pareto(
     g: nx.Graph,
     sector: str,
@@ -148,7 +156,8 @@ def simulate_shocks_from_pareto(
     """
 
     node_list = get_sector_nodes(g, sector)
-    pool = Pool(8)
+    cpu = cpu_count()
+    pool = Pool(cpu)
     func = partial(
         simulate_one_shock_from_pareto,
         g,
@@ -159,65 +168,8 @@ def simulate_shocks_from_pareto(
         sector_path,
     )
     pool.map(func, range(repeat))
-    """
-    for i in range(repeat):
-        simulate_one_shock_from_pareto(
-            g, node_list, alpha, scale, default_threshold, sector_path, i
-        )
-    """
+
     return 1
-
-
-def save_graph_to_feather(g, path, iteration):
-
-    df = pd.DataFrame.from_dict(dict(g.nodes(data=True)), orient="index")
-    df = df.reset_index(drop=True)
-
-    df.to_feather(f"{path}/{iteration}.feather", compression="zstd")
-
-
-def append_simulation_metadata_to_csv(
-    path,
-    sector,
-    shocked_nodes,
-    shock_dist,
-    alpha,
-    scale_param,
-    default_threshold,
-    no_of_iterations,
-    folder_name,
-):
-    """Currently not in use."""
-    new_line = [
-        sector,
-        len(shocked_nodes),
-        shock_dist,
-        alpha,
-        scale_param,
-        default_threshold,
-        no_of_iterations,
-        folder_name,
-    ]
-
-    if os.path.isfile(path):
-        with open(path, "a", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(new_line)
-    else:
-        with open(path, "a", newline="") as f:
-            writer = csv.writer(f)
-            header = [
-                "Sector",
-                "shocked_nodes",
-                "shock_dist",
-                "alpha",
-                "scale_param",
-                "default_threshold",
-                "no_of_iterations",
-                "folder_name",
-            ]
-            writer.writerow(header)
-            writer.writerow(new_line)
 
 
 def simulate_shock_for_multiple_sectors(
@@ -235,6 +187,7 @@ def simulate_shock_for_multiple_sectors(
     each sector have their own folder. The metadata about the run (shock parameters,
     default threshold, number of iterations, path, etc.) are also saved to a
     metadata file.
+    This is the version that runs multiprocessing among the iteration dimension.
     """
 
     dir = datetime.now().strftime("%Y_%m_%d_%H%M%S")
@@ -258,6 +211,93 @@ def simulate_shock_for_multiple_sectors(
         )
         logging.info(f"Simulation for {sector} sector is finished.")
 
+    end_time = time()
+    runtime = end_time - start_time
+
+    metadata = {
+        "date_of_run": dir,
+        "shock_distribution": "pareto",
+        "alpha": alpha,
+        "scale_param": scale,
+        "default_threshold": default_threshold,
+        "no_of_iterations": repeat,
+        "results_path": path,
+        "time elapsed": runtime,
+    }
+
+    metadata_df = pd.DataFrame.from_dict(metadata, orient="index")
+    metadata_df.to_csv(f"{path}/metadata.csv", header=False)
+    logging.debug(
+        f"shock simulation is finished, metadata is saved. Elapsed time: {runtime} seconds"
+    )
+
+    return 1
+
+
+def simulate_shocks_for_one_sector(
+    g: nx.Graph,
+    alpha: float,
+    scale: float,
+    default_threshold: float,
+    repeat: int,
+    path: str,
+    sector: str,
+):
+
+    """
+    Alternative function for multiprocessing that simulates the shocks for one sector.
+    """
+
+    node_list = get_sector_nodes(g, sector)
+    sector_path = sector_path = f"{path}/{sector}"
+    os.mkdir(sector_path)
+
+    for i in range(repeat):
+        simulate_one_shock_from_pareto(
+            g, node_list, alpha, scale, default_threshold, sector_path, i
+        )
+
+        if i % 10 == 0:
+            logging.debug(f"{i}. iteration for {sector} is finished.")
+
+    logging.debug(f"simulation of shocks is finished for {sector} sector")
+
+    return 1
+
+
+def simulate_shock_for_multiple_sectors_v2(
+    g: nx.Graph,
+    alpha: float,
+    scale: float,
+    default_threshold: float,
+    repeat: int,
+    simulation_path: str,
+    sectors_list: str,
+):
+    """
+    Main function that runs the monte carlo simulation for multiple given sectors.
+    For each simulation a new folder is created with the actual date and within them
+    each sector have their own folder. The metadata about the run (shock parameters,
+    default threshold, number of iterations, path, etc.) are also saved to a
+    metadata file.
+    This is the version that runs multiprocessing among the sector dimension.
+    """
+
+    dir = datetime.now().strftime("%Y_%m_%d_%H%M%S")
+    path = f"{simulation_path}{dir}"
+    os.mkdir(path)
+    logging.debug(
+        f"folder for the current run is created in the simulations folder under the name {dir}"
+    )
+
+    start_time = time()
+    cpu = cpu_count()
+    pool = Pool(cpu)
+    func = partial(
+        simulate_shocks_for_one_sector, g, alpha, scale, default_threshold, repeat, path
+    )
+
+    pool.map(func, sectors_list)
     end_time = time()
     runtime = end_time - start_time
 
