@@ -246,6 +246,8 @@ def simulate_shocks_for_one_sector(
 
     """
     Alternative function for multiprocessing that simulates the shocks for one sector.
+
+    SLOVER VERSION, NOT IN USE.
     """
 
     node_list = get_sector_nodes(g, sector)
@@ -281,6 +283,8 @@ def simulate_shock_for_multiple_sectors_v2(
     default threshold, number of iterations, path, etc.) are also saved to a
     metadata file.
     This is the version that runs multiprocessing among the sector dimension.
+
+    SLOWER VERSION, NOT IN USE.
     """
 
     dir = datetime.now().strftime("%Y_%m_%d_%H%M%S")
