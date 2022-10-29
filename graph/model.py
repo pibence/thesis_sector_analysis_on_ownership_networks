@@ -65,7 +65,7 @@ def propagate_default(g, default_threshold):
 
                         if (
                             g.nodes[neighbor]["equity"]
-                            < g.nodes[neighbor]["equity"] * default_threshold
+                            < g.nodes[neighbor]["equity_orig"] * default_threshold
                         ):
                             new_defaulter = True
                             g.nodes[neighbor]["default_round"] = round
@@ -97,7 +97,7 @@ def generate_shock_from_pareto(
         g.nodes[n]["assets"] *= np.exp(-shock_list[i])
         g.nodes[n]["equity"] = g.nodes[n]["assets"] - g.nodes[n]["liabilities"]
 
-        if g.nodes[n]["equity"] < g.nodes[n]["equity"] * default_threshold:
+        if g.nodes[n]["equity"] < g.nodes[n]["equity_orig"] * default_threshold:
             g.nodes[n]["default_round"] = 1
 
     return g
