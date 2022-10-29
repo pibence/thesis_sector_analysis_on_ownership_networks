@@ -57,12 +57,13 @@ def create_descriptive_table(graphs: list):
 
 def analyze_sectors(g, sectors):
     """
-    Return the nodes, absolute and relative size, clustering coefficient and the
-    edges within sector to total edges from sector ratio.
+    Return the nodes, absolute and relative size, clustering coefficient and
+    the actual number of edges from sector to the all possible edges from sector ratio.
     """
 
     largest_cc = max(nx.connected_components(g), key=len)
     h = g.subgraph(largest_cc).copy()
+    nodes_in_orig_graph = len(h.nodes())
 
     total_market_size = get_graph_size_by_assets(h)
 
@@ -83,16 +84,21 @@ def analyze_sectors(g, sectors):
         ret_dict["clustering_coefficient"] = nx.average_clustering(s)
         logging.debug(f"Clustering coefficient for {sector} is added.")
 
-        edges_within_sector = len(s.edges())
+        nodes_in_inverse_graph = nodes_in_orig_graph - ret_dict["nodes"]
+        all_possible_edges = nodes_in_inverse_graph * ret_dict["nodes"]
+        equity_level = []
         edges_from_sector = 0
+
         for n in s.nodes():
             for neighbor in h.neighbors(n):
                 if neighbor not in s:
                     edges_from_sector += 1
-        ret_dict["edge_ratio"] = edges_within_sector / (
-            edges_from_sector + edges_within_sector
-        )
-        logging.debug(f"in vs total edge ratio for {sector} is added.")
+
+            equity_level.append(s.nodes[n]["equity"] / s.nodes[n]["assets"])
+
+        ret_dict["edge_ratio"] = edges_from_sector / all_possible_edges
+        ret_dict["equity_level"] = np.mean(equity_level)
+        logging.debug(f"edge ratio and equity level for {sector} is added.")
 
         ret_list.append(ret_dict)
         logging.info(f"{sector} sector metrics calculation is finished.")

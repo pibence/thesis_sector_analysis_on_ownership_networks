@@ -1,3 +1,4 @@
+from tempfile import TemporaryFile
 import pandas as pd
 import networkx as nx
 import os
@@ -59,6 +60,10 @@ def count_defaults_each_round(df_list):
 
 
 def calculate_cummulative_defaults(sectors_dict):
+    """
+    Helper function that counts the cummulative defaults in each round for each
+    shocked sector.
+    """
 
     interim_dict = {}
     # calculating no of defaulted firms and appending their mean to a dictionary
@@ -98,7 +103,7 @@ def calculate_effect_on_other_sectors(df_list, shocked_sector, direct=False):
     for df in df_list:
 
         sector_count = (
-            df[(df.sector != shocked_sector)].groupby("sector").count()["label"]
+            df[df.sector != shocked_sector].groupby("sector").count()["label"]
         )
 
         if direct:
@@ -123,3 +128,48 @@ def calculate_effect_on_other_sectors(df_list, shocked_sector, direct=False):
                 result_dict[res.index[i]].append(res.iloc[i])
 
     return result_dict
+
+
+def calculate_effect_from_other_sectors(sectors_dict):
+    """
+    Helper function to calculate the effect of each sectors shock on one sector.
+    The returned value is a nested dictionary thats keys are the sectors that
+    we want to get info on how they are effected by different sectors' shocks and
+    their values are dictionaries where the key is the sector that is shocked
+    and the value is a list which contains percentages of defaulted firms in the
+    examined sector.
+
+    Example: result_dict["Information Technologies"]["Health Care"] tells us
+    the effect on the IT sector of the shocks coming from the situation where
+    the initial shock hits the health care sector. The result is a dictionary
+    of the percentages of IT sector companies failed in each iteration.
+    """
+
+    result_dict = {}
+
+    for shocked_sector, df_list in sectors_dict.items():
+
+        # calculating the effects of shocking the 'shocked sector'
+        interim_dict = calculate_effect_on_other_sectors(df_list, shocked_sector, False)
+
+        # saving the results of the shock on each sector to an inner dictionary where
+        # the key is the shocked sector
+        for sec, def_list in interim_dict.items():
+            try:
+                result_dict[sec][shocked_sector] = def_list
+            except:
+                result_dict[sec] = {}
+                result_dict[sec][shocked_sector] = def_list
+
+    return result_dict
+
+
+def sort_dictionary_by_mean_of_list(d):
+    """
+    Helper function that orders the dictionary based on the mean of the list that
+    is in the value field.
+    """
+    sorted_keys = sorted(d, key=lambda x: np.mean(d[x]), reverse=True)
+    ret_dict = {key: d[key] for key in sorted_keys}
+
+    return ret_dict
