@@ -37,26 +37,25 @@ def load_simulation_for_all_sectors(simulations_path, run_folder, sector_list):
     return sectors_dict
 
 
-def count_defaults_each_round(df_list):
+def count_defaults_each_round(df_list) -> pd.DataFrame:
     """
-    Helper function that creates a dictionary with the defaulted firms in each round.
-    The key of the dictionary is the default round and the valueas are lists containing
-    information on each run.
+    Helper function that creates a dataframe with the defaulted firms in each round.
+    The rows of the dictionary are the realizations while the columns represent
+    each default round.
     """
 
-    result_dict = {}
+    result_list = []
     for df in df_list:
-
-        # res = df.groupby("default_round").count()['name']
+        result_dict = {}
         res = df[~pd.isna(df.default_round)].groupby("default_round").count()["label"]
         for i in range(0, len(res)):
-            try:
-                result_dict[res.index[i]].append(res.iloc[i])
-            except KeyError:
-                result_dict[res.index[i]] = []
-                result_dict[res.index[i]].append(res.iloc[i])
 
-    return result_dict
+            result_dict[res.index[i]] = res.iloc[i]
+        result_list.append(result_dict)
+
+    result_df = pd.DataFrame.from_records(result_list).fillna(0)
+
+    return result_df
 
 
 def calculate_cummulative_defaults(sectors_dict):
@@ -64,28 +63,25 @@ def calculate_cummulative_defaults(sectors_dict):
     Helper function that counts the cummulative defaults in each round for each
     shocked sector.
     """
-
-    interim_dict = {}
-    # calculating no of defaulted firms and appending their mean to a dictionary
-    # where the keys are the sectors
+    plot_dict = {}
     for (sec, df_list) in sectors_dict.items():
 
-        defaulted_dict = count_defaults_each_round(df_list)
-        interim_dict[sec] = [np.mean(value) for value in defaulted_dict.values()]
+        defaulted_df = count_defaults_each_round(df_list)
+
+        # calculating cummulative sum of defaults
+        cumsum_df = defaulted_df.cumsum(axis=1)
+        # calculating the mean of each cummulative sum value
+        plot_dict[sec] = cumsum_df.mean(axis=0).to_dict()
 
     # calculating highest default round
-    len_longest_list = len(max(interim_dict.values(), key=lambda x: len(x)))
+    len_longest_list = len(max(plot_dict.values(), key=lambda x: len(x)))
 
     # adding zeros to rounds where there were no defaults to have all lists
     # with the same length
-    plot_dict = {}
-    for sec, def_list in interim_dict.items():
+    for def_dict in plot_dict.values():
 
-        extra_zeros = len_longest_list - len(def_list)
-        def_list.extend([0] * extra_zeros)
-
-        # creating cumulative sum of defaults
-        plot_dict[sec] = np.cumsum(def_list)
+        for round in range(len(def_dict), len_longest_list):
+            def_dict[round] = def_dict[sorted(def_dict.keys())[-1]]
 
     return plot_dict
 

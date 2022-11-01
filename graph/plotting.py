@@ -137,11 +137,12 @@ def plot_defaults(sectors_dict, sector, method):
         for i, (sec, df_list) in enumerate(sectors_dict.items()):
 
             if method == "rounds":
-                defaulted_dict = count_defaults_each_round(df_list)
+                defaulted_df = count_defaults_each_round(df_list)
                 fig.suptitle(
                     f"Number of defaulted firms from shocks on different sectors",
                     size=20,
                 )
+                axes.flatten()[i].boxplot(defaulted_df)
                 axes.flatten()[i] = add_axes_attributes(axes.flatten()[i])
 
             elif method == "sectors_direct":
@@ -152,6 +153,9 @@ def plot_defaults(sectors_dict, sector, method):
                     f"% of defaulted firms in each sector from shocks on different sectors \nDirect effect",
                     size=20,
                 )
+                axes.flatten()[i].boxplot(defaulted_dict.values())
+                axes.flatten()[i].set_xticklabels(defaulted_dict.keys(), rotation=90)
+
                 axes.flatten()[i] = add_axes_attributes_sector(axes.flatten()[i])
                 axes.flatten()[i].yaxis.set_major_formatter(
                     mtick.PercentFormatter(decimals=None)
@@ -165,14 +169,14 @@ def plot_defaults(sectors_dict, sector, method):
                     f"% of defaulted firms in each sector from shocks on different sectors \nTotal effect",
                     size=20,
                 )
+                axes.flatten()[i].boxplot(defaulted_dict.values())
+                axes.flatten()[i].set_xticklabels(defaulted_dict.keys(), rotation=90)
+
                 axes.flatten()[i] = add_axes_attributes_sector(axes.flatten()[i])
 
                 axes.flatten()[i].yaxis.set_major_formatter(
                     mtick.PercentFormatter(decimals=None)
                 )
-
-            axes.flatten()[i].boxplot(defaulted_dict.values())
-            axes.flatten()[i].set_xticklabels(defaulted_dict.keys(), rotation=90)
             axes.flatten()[i].set_title(f"{sec}", size=16)
 
         fig.tight_layout()
@@ -183,7 +187,8 @@ def plot_defaults(sectors_dict, sector, method):
         fig, ax = plt.subplots(figsize=(8, 5))
 
         if method == "rounds":
-            defaulted_dict = count_defaults_each_round(df_list)
+            defaulted_df = count_defaults_each_round(df_list)
+            ax.boxplot(defaulted_df)
             ax = add_axes_attributes(ax)
             ax.set_title(
                 f"Defaulted firms in each round from {sector} sector's shocks", size=16
@@ -193,6 +198,8 @@ def plot_defaults(sectors_dict, sector, method):
             defaulted_dict = calculate_effect_on_other_sectors(
                 df_list, sector, direct=True
             )
+            ax.boxplot(defaulted_dict)
+            ax.set_xticklabels(defaulted_dict.keys(), rotation=90)
 
             ax = add_axes_attributes_sector(ax)
             ax.set_title(
@@ -204,15 +211,14 @@ def plot_defaults(sectors_dict, sector, method):
             defaulted_dict = calculate_effect_on_other_sectors(
                 df_list, sector, direct=False
             )
+            ax.boxplot(defaulted_dict)
+            ax.set_xticklabels(defaulted_dict.keys(), rotation=90)
+
             ax = add_axes_attributes_sector(ax)
             ax.set_title(
                 f"% of defaulted firms in each sector from shocks on {sector} sector \nTotal effect"
             )
             ax.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=None))
-
-        ax.boxplot(defaulted_dict.values())
-        ax.set_xticklabels(defaulted_dict.keys(), rotation=90)
-
     return fig
 
 
@@ -238,8 +244,15 @@ def plot_cummulative_defaults(sectors_dict):
 
     plot_dict = calculate_cummulative_defaults(sectors_dict)
 
-    for sector, def_list in plot_dict.items():
-        ax.plot(def_list, marker="x", linestyle="--", markersize=10, label=sector)
+    for sector, def_dict in plot_dict.items():
+        ax.plot(
+            def_dict.keys(),
+            def_dict.values(),
+            marker="x",
+            linestyle="--",
+            markersize=10,
+            label=sector,
+        )
 
     ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
 
