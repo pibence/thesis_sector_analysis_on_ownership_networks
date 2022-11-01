@@ -81,7 +81,7 @@ def calculate_cummulative_defaults(sectors_dict):
     for def_dict in plot_dict.values():
 
         for round in range(len(def_dict), len_longest_list):
-            def_dict[round] = def_dict[sorted(def_dict.keys())[-1]]
+            def_dict[round + 1] = def_dict[sorted(def_dict.keys())[-1]]
 
     return plot_dict
 
