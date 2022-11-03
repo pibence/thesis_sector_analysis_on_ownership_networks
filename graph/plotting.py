@@ -30,7 +30,7 @@ def creating_node_df(G: nx.Graph) -> pd.DataFrame:
     return node_df
 
 
-def plot_graph_features(G: nx.Graph, loglog=True):
+def plot_graph_features(G: nx.Graph, log=None):
     """
     The function takes the G as input and returns the degree distribution
     plot.
@@ -50,21 +50,26 @@ def plot_graph_features(G: nx.Graph, loglog=True):
     # setting design
     ax.set_xlabel("degree", size=14)
     ax.set_ylabel("frequency", size=14)
-    if loglog:
-        ax.set_title("Degree distribution on a log-log scale", size=18)
-    else:
-        ax.set_title("Degree distribution", size=18)
+
+    ax.set_title("Degree distribution", size=18)
 
     ax.tick_params(labelsize=12)
 
-    if loglog == True:
+    if log == "xy":
         ax.set_yscale("log")
         ax.set_xscale("log")
+
+        ax.set_xlabel("degree (log)", size=14)
+        ax.set_ylabel("frequency (log)", size=14)
+    elif log == "x":
+        ax.set_xscale("log")
+
+        ax.set_xlabel("degree (log)", size=14)
 
     return fig
 
 
-def plot_asset_value_dist(G, loglog=False):
+def plot_asset_value_dist(G, log=None):
     plot_df = creating_node_df(G)
 
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -73,11 +78,18 @@ def plot_asset_value_dist(G, loglog=False):
     # setting design
     ax.set_ylabel("frequency", size=14)
     ax.set_xlabel("assets (in thousand $)", size=14)
-    ax.set_title("Asset distribution", size=18)
+    ax.set_title("Asset value distribution", size=18)
 
-    if loglog == True:
+    if log == "xy":
         ax.set_yscale("log")
         ax.set_xscale("log")
+
+        ax.set_ylabel("frequency (log)", size=14)
+        ax.set_xlabel("assets (log)", size=14)
+    elif log == "x":
+        ax.set_xscale("log")
+
+        ax.set_xlabel("assets (log)", size=14)
 
     return fig
 
@@ -137,9 +149,9 @@ def plot_defaults(sectors_dict, sector, method):
         for i, (sec, df_list) in enumerate(sectors_dict.items()):
 
             if method == "rounds":
-                defaulted_df = count_defaults_each_round(df_list)
+                defaulted_df = count_defaults_each_round(df_list, percent=True)
                 fig.suptitle(
-                    f"Number of defaulted firms from shocks on different sectors",
+                    f"NPercentage of defaulted firms from shocks on different sectors",
                     size=20,
                 )
                 axes.flatten()[i].boxplot(defaulted_df)
@@ -150,23 +162,20 @@ def plot_defaults(sectors_dict, sector, method):
                     df_list, sec, direct=True
                 )
                 fig.suptitle(
-                    f"% of defaulted firms in each sector from shocks on different sectors \nDirect effect",
+                    f"Percentage of defaulted firms in each sector from shocks on different sectors \nDirect effect",
                     size=20,
                 )
                 axes.flatten()[i].boxplot(defaulted_dict.values())
                 axes.flatten()[i].set_xticklabels(defaulted_dict.keys(), rotation=90)
 
                 axes.flatten()[i] = add_axes_attributes_sector(axes.flatten()[i])
-                axes.flatten()[i].yaxis.set_major_formatter(
-                    mtick.PercentFormatter(decimals=None)
-                )
 
             elif method == "sectors_total":
                 defaulted_dict = calculate_effect_on_other_sectors(
                     df_list, sec, direct=False
                 )
                 fig.suptitle(
-                    f"% of defaulted firms in each sector from shocks on different sectors \nTotal effect",
+                    f"Percentage of defaulted firms in each sector from shocks on different sectors \nTotal effect",
                     size=20,
                 )
                 axes.flatten()[i].boxplot(defaulted_dict.values())
@@ -174,9 +183,9 @@ def plot_defaults(sectors_dict, sector, method):
 
                 axes.flatten()[i] = add_axes_attributes_sector(axes.flatten()[i])
 
-                axes.flatten()[i].yaxis.set_major_formatter(
-                    mtick.PercentFormatter(decimals=None)
-                )
+            axes.flatten()[i].yaxis.set_major_formatter(
+                mtick.PercentFormatter(decimals=0)
+            )
             axes.flatten()[i].set_title(f"{sec}", size=16)
 
         fig.tight_layout()
@@ -187,7 +196,7 @@ def plot_defaults(sectors_dict, sector, method):
         fig, ax = plt.subplots(figsize=(8, 5))
 
         if method == "rounds":
-            defaulted_df = count_defaults_each_round(df_list)
+            defaulted_df = count_defaults_each_round(df_list, percent=True)
             ax.boxplot(defaulted_df)
             ax = add_axes_attributes(ax)
             ax.set_title(
@@ -205,7 +214,6 @@ def plot_defaults(sectors_dict, sector, method):
             ax.set_title(
                 f"% of defaulted firms in each sector from shocks on {sector} sector \nDirect effect"
             )
-            ax.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=None))
 
         elif method == "sectors_total":
             defaulted_dict = calculate_effect_on_other_sectors(
@@ -218,22 +226,26 @@ def plot_defaults(sectors_dict, sector, method):
             ax.set_title(
                 f"% of defaulted firms in each sector from shocks on {sector} sector \nTotal effect"
             )
-            ax.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=None))
+
+            ax.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
+
     return fig
 
 
 def add_axes_attributes(ax):
-    ax.set_ylabel("no. of defaulted firms", size=14)
+    ax.set_ylabel("%. of defaulted firms", size=14)
     ax.set_xlabel("default round", size=14)
     ax.tick_params(labelsize=12)
+    ax.grid(axis="y", linestyle="--")
 
     return ax
 
 
 def add_axes_attributes_sector(ax):
-    ax.set_ylabel("no. of defaulted firms", size=14)
+    ax.set_ylabel("%. of defaulted firms", size=14)
     ax.set_xlabel("sector", size=14)
     ax.tick_params(labelsize=12)
+    ax.grid(axis="y", linestyle="--")
 
     return ax
 
@@ -255,6 +267,7 @@ def plot_cummulative_defaults(sectors_dict):
         )
 
     ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
+    ax.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=None))
 
     ax = add_axes_attributes(ax)
     ax.set_title(

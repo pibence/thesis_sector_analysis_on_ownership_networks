@@ -44,7 +44,9 @@ def create_descriptive_table(graphs: list):
 
         ret_dict["diameter_of_largest_cc"] = nx.diameter(s)
         logging.debug(f"diameter is calculated for the {i}. graph")
-        ret_dict["clustering_coefficient"] = nx.average_clustering(graph)
+        ret_dict["clustering_coefficient"] = calculate_clustering_coeff(
+            s, s.nodes(), "weight"
+        )
         logging.debug(f"clustering coefficient is calculated for the {i}. graph")
 
         ret_list.append(ret_dict)
@@ -57,13 +59,19 @@ def create_descriptive_table(graphs: list):
 
 def analyze_sectors(g, sectors):
     """
-    Return the nodes, absolute and relative size, clustering coefficient and
-    the actual number of edges from sector to the all possible edges from sector ratio.
+     Return the nodes, absolute and relative size, clustering coefficient and
+    rthe edges within sector to all edges of the sector ratio.
+     The difference between sector_clustering_coefficient and avg_clustering_coefficient
+     is that the sector one takes only the subgraph for the sector as input and
+     calculates the global cc for the sector, while the avg calculates the cc for
+     every node in the sector and takes the average of them. Both cc metrics are
+     weighted with geometric average.
+     weighted cc ref:
+     https://www.sciencedirect.com/science/article/abs/pii/S0378873309000070?via%3Dihub
     """
 
     largest_cc = max(nx.connected_components(g), key=len)
     h = g.subgraph(largest_cc).copy()
-    nodes_in_orig_graph = len(h.nodes())
 
     total_market_size = get_graph_size_by_assets(h)
 
@@ -81,22 +89,30 @@ def analyze_sectors(g, sectors):
         ret_dict["total_sector_size"] = total_sector_size
         ret_dict["rel_sector_size"] = total_sector_size / total_market_size
         logging.debug(f"Node and size info for {sector} is added.")
-        ret_dict["clustering_coefficient"] = nx.average_clustering(s)
-        logging.debug(f"Clustering coefficient for {sector} is added.")
+        ret_dict["sector_clustering_coefficient"] = calculate_clustering_coeff(
+            s, sector_nodes, "wight"
+        )
+        ret_dict["avg_clustering_coefficient"] = calculate_clustering_coeff(
+            h, sector_nodes, "wight"
+        )
+        logging.debug(f"Clustering coefficients for {sector} is added.")
 
-        nodes_in_inverse_graph = nodes_in_orig_graph - ret_dict["nodes"]
-        all_possible_edges = nodes_in_inverse_graph * ret_dict["nodes"]
         equity_level = []
         edges_from_sector = 0
+        edges_within_sector = 0
 
         for n in s.nodes():
             for neighbor in h.neighbors(n):
                 if neighbor not in s:
                     edges_from_sector += 1
+                else:
+                    edges_within_sector += 1
 
             equity_level.append(s.nodes[n]["equity"] / s.nodes[n]["assets"])
 
-        ret_dict["edge_ratio"] = edges_from_sector / all_possible_edges
+        ret_dict["edge_ratio"] = edges_within_sector / (
+            edges_within_sector + edges_from_sector
+        )
         ret_dict["equity_level"] = np.mean(equity_level)
         logging.debug(f"edge ratio and equity level for {sector} is added.")
 
@@ -121,3 +137,8 @@ def get_graph_size_by_assets(g):
         total_size += g.nodes[n]["assets"]
 
     return total_size
+
+
+def calculate_clustering_coeff(g, nodes, weight):
+    cc = list(nx.clustering(g, nodes=nodes, weight=weight).values())
+    return np.mean(cc)

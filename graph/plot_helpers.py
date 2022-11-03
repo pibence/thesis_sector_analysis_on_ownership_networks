@@ -37,7 +37,7 @@ def load_simulation_for_all_sectors(simulations_path, run_folder, sector_list):
     return sectors_dict
 
 
-def count_defaults_each_round(df_list) -> pd.DataFrame:
+def count_defaults_each_round(df_list, percent=False) -> pd.DataFrame:
     """
     Helper function that creates a dataframe with the defaulted firms in each round.
     The rows of the dictionary are the realizations while the columns represent
@@ -55,6 +55,9 @@ def count_defaults_each_round(df_list) -> pd.DataFrame:
 
     result_df = pd.DataFrame.from_records(result_list).fillna(0)
 
+    if percent:
+        result_df = result_df / len(df_list[0]["label"]) * 100
+
     return result_df
 
 
@@ -70,6 +73,9 @@ def calculate_cummulative_defaults(sectors_dict):
 
         # calculating cummulative sum of defaults
         cumsum_df = defaulted_df.cumsum(axis=1)
+        # expressing cummulative defaults as percentage of total nodes
+        no_nodes = len(df_list[0]["label"])
+        cumsum_df = cumsum_df / no_nodes * 100
         # calculating the mean of each cummulative sum value
         plot_dict[sec] = cumsum_df.mean(axis=0).to_dict()
 
