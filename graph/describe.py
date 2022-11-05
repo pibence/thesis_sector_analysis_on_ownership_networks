@@ -107,20 +107,22 @@ def analyze_sectors(g, sectors, cc_weight="Arithm"):
         logging.debug(f"Clustering coefficients for {sector} is added.")
 
         equity_level = []
-        edges_from_sector = 0
-        edges_within_sector = 0
-
+        edge_weights_in_sector = []
+        edge_weights_from_sector = []
         for n in s.nodes():
             for neighbor in h.neighbors(n):
                 if neighbor not in s:
-                    edges_from_sector += 1
+                    edge_weights_from_sector.append(s[n][neighbor]["weight"])
                 else:
-                    edges_within_sector += 1
+                    edge_weights_in_sector.append(s[n][neighbor]["weight"])
 
             equity_level.append(s.nodes[n]["equity"] / s.nodes[n]["assets"])
 
-        ret_dict["edge_ratio"] = edges_within_sector / (
-            edges_within_sector + edges_from_sector
+        ret_dict["edge_ratio"] = len(edge_weights_in_sector) / (
+            len(edge_weights_in_sector) + len(edge_weights_from_sector)
+        )
+        ret_dict["weighted_edge_ratio"] = np.sum(edge_weights_in_sector) / (
+            np.sum(edge_weights_in_sector) + np.sum(edge_weights_from_sector)
         )
         ret_dict["equity_level"] = np.mean(equity_level)
         logging.debug(f"edge ratio and equity level for {sector} is added.")
@@ -170,7 +172,6 @@ def _weighted_triangles_and_degree_iter(G, nodes=None, weight="weight"):
     So you may want to divide by 2.
 
     """
-    import numpy as np
 
     if weight is None or G.number_of_edges() == 0:
         max_weight = 1
