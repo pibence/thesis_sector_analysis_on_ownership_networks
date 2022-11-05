@@ -89,11 +89,11 @@ def analyze_sectors(g, sectors):
         ret_dict["total_sector_size"] = total_sector_size
         ret_dict["rel_sector_size"] = total_sector_size / total_market_size
         logging.debug(f"Node and size info for {sector} is added.")
-        ret_dict["sector_clustering_coefficient"] = calculate_clustering_coeff(
-            s, sector_nodes, "wight"
+        ret_dict["sector_clustering_coefficient"] = calculate_modified_clustering_coeff(
+            s, sector_nodes, "weight"
         )
-        ret_dict["avg_clustering_coefficient"] = calculate_clustering_coeff(
-            h, sector_nodes, "wight"
+        ret_dict["avg_clustering_coefficient"] = calculate_modified_clustering_coeff(
+            h, sector_nodes, "weight"
         )
         logging.debug(f"Clustering coefficients for {sector} is added.")
 
@@ -142,3 +142,71 @@ def get_graph_size_by_assets(g):
 def calculate_clustering_coeff(g, nodes, weight):
     cc = list(nx.clustering(g, nodes=nodes, weight=weight).values())
     return np.mean(cc)
+
+
+def calculate_modified_clustering_coeff(g, nodes, weight):
+    cc = list(modified_clustering(g, nodes=nodes, weight=weight).values())
+    return np.mean(cc)
+
+
+def _weighted_triangles_and_degree_iter(G, nodes=None, weight="weight"):
+    """
+    @copyright: networkx package. Copied to rewrite average function
+
+    Return an iterator of (node, degree, weighted_triangles).
+
+    Used for weighted clustering.
+    Note: this returns the geometric average weight of edges in the triangle.
+    Also, each triangle is counted twice (each direction).
+    So you may want to divide by 2.
+
+    """
+    import numpy as np
+
+    if weight is None or G.number_of_edges() == 0:
+        max_weight = 1
+    else:
+        max_weight = max(d.get(weight, 1) for u, v, d in G.edges(data=True))
+    if nodes is None:
+        nodes_nbrs = G.adj.items()
+    else:
+        nodes_nbrs = ((n, G[n]) for n in G.nbunch_iter(nodes))
+
+    def wt(u, v):
+        return G[u][v].get(weight, 1) / max_weight
+
+    for i, nbrs in nodes_nbrs:
+        inbrs = set(nbrs) - {i}
+        weighted_triangles = 0
+        seen = set()
+        for j in inbrs:
+            seen.add(j)
+            # This avoids counting twice -- we double at the end.
+            jnbrs = set(G[j]) - seen
+            # Only compute the edge weight once, before the inner inner
+            # loop.
+            wij = wt(i, j)
+            weighted_triangles += sum(
+                np.mean([(wij + wt(j, k) + wt(k, i)) for k in inbrs & jnbrs])
+            )
+        yield (i, len(inbrs), 2 * weighted_triangles)
+
+
+def modified_clustering(G, nodes=None, weight=None):
+    """
+    @copyright: networkx package, clustering function
+    Only copied to apply arithmetic mean for edge weights instead of geometric
+    """
+    if G.is_directed():
+        pass
+    else:
+        # The formula 2*T/(d*(d-1)) from docs is t/(d*(d-1)) here b/c t==2*T
+        if weight is not None:
+            td_iter = _weighted_triangles_and_degree_iter(G, nodes, weight)
+            clusterc = {v: 0 if t == 0 else t / (d * (d - 1)) for v, d, t in td_iter}
+        else:
+            pass
+    if nodes in G:
+        # Return the value of the sole entry in the dictionary.
+        return clusterc[nodes]
+    return clusterc
