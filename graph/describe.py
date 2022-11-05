@@ -57,7 +57,7 @@ def create_descriptive_table(graphs: list):
     return ret_df
 
 
-def analyze_sectors(g, sectors):
+def analyze_sectors(g, sectors, cc_weight="Arithm"):
     """
      Return the nodes, absolute and relative size, clustering coefficient and
     rthe edges within sector to all edges of the sector ratio.
@@ -89,12 +89,21 @@ def analyze_sectors(g, sectors):
         ret_dict["total_sector_size"] = total_sector_size
         ret_dict["rel_sector_size"] = total_sector_size / total_market_size
         logging.debug(f"Node and size info for {sector} is added.")
-        ret_dict["sector_clustering_coefficient"] = calculate_modified_clustering_coeff(
-            s, sector_nodes, "weight"
-        )
-        ret_dict["avg_clustering_coefficient"] = calculate_modified_clustering_coeff(
-            h, sector_nodes, "weight"
-        )
+
+        if cc_weight == "Geom":
+            ret_dict["sector_clustering_coefficient"] = calculate_clustering_coeff(
+                s, sector_nodes, "weight"
+            )
+            ret_dict["avg_clustering_coefficient"] = calculate_clustering_coeff(
+                h, sector_nodes, "weight"
+            )
+        elif cc_weight == "Arithm":
+            ret_dict[
+                "sector_clustering_coefficient"
+            ] = calculate_modified_clustering_coeff(s, sector_nodes, "weight")
+            ret_dict[
+                "avg_clustering_coefficient"
+            ] = calculate_modified_clustering_coeff(h, sector_nodes, "weight")
         logging.debug(f"Clustering coefficients for {sector} is added.")
 
         equity_level = []
@@ -151,7 +160,7 @@ def calculate_modified_clustering_coeff(g, nodes, weight):
 
 def _weighted_triangles_and_degree_iter(G, nodes=None, weight="weight"):
     """
-    @copyright: networkx package. Copied to rewrite average function
+    @copyright: networkx package, clustering function
 
     Return an iterator of (node, degree, weighted_triangles).
 
@@ -187,7 +196,7 @@ def _weighted_triangles_and_degree_iter(G, nodes=None, weight="weight"):
             # loop.
             wij = wt(i, j)
             weighted_triangles += sum(
-                np.mean([(wij + wt(j, k) + wt(k, i)) for k in inbrs & jnbrs])
+                [(wij + wt(j, k) + wt(k, i)) / 3 for k in inbrs & jnbrs]
             )
         yield (i, len(inbrs), 2 * weighted_triangles)
 
