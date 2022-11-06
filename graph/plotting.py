@@ -39,21 +39,22 @@ def plot_graph_features(G: nx.Graph, log=None):
     # getting node_df
     plot_df = creating_node_df(G)
 
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=(9, 6))
 
     ax.scatter(
         x=plot_df.degree.value_counts().index,
         y=plot_df.degree.value_counts(),
         marker="x",
-        color="b",
+        color="darkred",
     )
     # setting design
-    ax.set_xlabel("degree", size=14)
-    ax.set_ylabel("frequency", size=14)
+    ax.set_xlabel("Degree", size=14)
+    ax.set_ylabel("Frequency", size=14)
 
     ax.set_title("Degree distribution", size=18)
 
     ax.tick_params(labelsize=12)
+    ax.grid(axis="y", linestyle="--")
 
     if log == "xy":
         ax.set_yscale("log")
@@ -76,20 +77,53 @@ def plot_asset_value_dist(G, log=None):
 
     sns.histplot(data=plot_df[["assets"]], x="assets", ax=ax)
     # setting design
-    ax.set_ylabel("frequency", size=14)
-    ax.set_xlabel("assets (in thousand $)", size=14)
+    ax.set_ylabel("Frequency", size=14)
+    ax.set_xlabel("Assets (in thousand $)", size=14)
     ax.set_title("Asset value distribution", size=18)
+    ax.grid(axis="y", linestyle="--")
 
     if log == "xy":
         ax.set_yscale("log")
         ax.set_xscale("log")
 
-        ax.set_ylabel("frequency (log)", size=14)
-        ax.set_xlabel("assets (log)", size=14)
+        ax.set_ylabel("Frequency (log)", size=14)
+        ax.set_xlabel("Assets (log)", size=14)
     elif log == "x":
         ax.set_xscale("log")
 
         ax.set_xlabel("assets (log)", size=14)
+
+    return fig
+
+
+def plot_node_weighted_er_connection(sector_df):
+
+    fig, ax = plt.subplots(figsize=(9, 6))
+    sns.scatterplot(
+        data=sector_df, x="nodes", y="weighted_edge_ratio", hue="sector", s=150, ax=ax
+    )
+    sns.regplot(
+        data=sector_df,
+        x="nodes",
+        y="weighted_edge_ratio",
+        scatter=False,
+        ci=None,
+        ax=ax,
+        line_kws={"color": "darkred"},
+    )
+    ax.legend(
+        loc="upper left",
+        bbox_to_anchor=(1, 1),
+        markerscale=2,
+        fontsize=12,
+    )
+    ax.grid()
+    ax.set_xlabel("Nodes", size=14)
+    ax.set_ylabel("weighted edge ratio", size=14)
+    ax.set_title(
+        f"Connection between node number and weighted edge ratio", size=18, pad=30
+    )
+    ax.tick_params(labelsize=12)
 
     return fig
 
@@ -101,7 +135,7 @@ def plot_sector_network_info(sector_df, x, y, siz):
     is marked with a different color.
     """
 
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(10, 6))
     sector_df = sector_df.reset_index()
     sns.scatterplot(
         data=sector_df,
@@ -113,17 +147,30 @@ def plot_sector_network_info(sector_df, x, y, siz):
         markers="O",
         ax=ax,
     )
-    legend = ax.legend(
-        loc="upper left", bbox_to_anchor=(1, 1), markerscale=0.5, fontsize=12
-    )
-    legend.texts[0].set_text("----SECTORS----")
-    legend.texts[11].set_text("----NODE COUNT----")
+    handles, labels = ax.get_legend_handles_labels()
 
+    labels[0] = "-----SECTORS----"
+    labels[11] = "-----NODE COUNT-----"
+    for h in handles[12:]:
+        sizes = [s / 10 for s in h.get_sizes()]
+        h.set_sizes(sizes)
+
+    ax.legend(
+        handles,
+        labels,
+        loc="upper left",
+        bbox_to_anchor=(1, 1),
+        markerscale=2,
+        fontsize=12,
+    )
+    x = x.replace("_", " ")
+    y = y.replace("_", " ")
+    siz = siz.replace("_", " ")
     ax.grid()
     ax.set_xlabel(x, size=16)
     ax.set_ylabel(y, size=16)
     ax.set_title(
-        f"Sector information in the {y}, {x}, {siz} dimensions", size=18, pad=30
+        f"Sector information in the \n{y}, {x}, {siz} dimensions", size=18, pad=30
     )
     ax.tick_params(labelsize=12)
 

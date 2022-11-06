@@ -160,6 +160,42 @@ def calculate_modified_clustering_coeff(g, nodes, weight):
     return np.mean(cc)
 
 
+def create_sector_overview_graph(g, sector_df, path):
+
+    edges = nx.get_edge_attributes(g, "weight")
+    nodes = list(edges.keys())
+
+    edge_df = pd.DataFrame(nodes, columns=["source", "target"])
+    edge_df["tuples"] = nodes
+
+    edge_df["weight"] = edge_df["tuples"].map(edges)
+
+    nodes_with_attr = nx.get_node_attributes(g, "sector")
+    edge_df["source_sector"] = edge_df["source"].map(nodes_with_attr)
+    edge_df["target_sector"] = edge_df["target"].map(nodes_with_attr)
+
+    el = edge_df.groupby(["source_sector", "target_sector"]).sum().reset_index()
+
+    sector_graph = nx.from_pandas_edgelist(
+        el,
+        source="source_sector",
+        target="target_sector",
+        edge_attr="weight",
+        create_using=nx.Graph,
+    )
+    sector_graph.remove_edges_from(nx.selfloop_edges(sector_graph))
+
+    node_info = sector_df[["sector", "total_sector_size"]].set_index("sector")
+    node_info = node_info.to_dict(orient="index")
+    nx.set_node_attributes(
+        sector_graph,
+        node_info,
+    )
+    nx.write_gexf(sector_graph, f"{path}sectors.gexf")
+
+    return 1
+
+
 def _weighted_triangles_and_degree_iter(G, nodes=None, weight="weight"):
     """
     @copyright: networkx package, clustering function

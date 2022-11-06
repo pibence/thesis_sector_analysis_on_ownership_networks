@@ -56,3 +56,4 @@ outputs:
   descriptive_table : data/outputs/decriptive_table.csv
   sector_analysis : data/outputs/sector_analysis.csv
   simulations : data/outputs/simulations/
+  plots : plots/
