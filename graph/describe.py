@@ -160,7 +160,12 @@ def calculate_modified_clustering_coeff(g, nodes, weight):
     return np.mean(cc)
 
 
-def create_sector_overview_graph(g, sector_df, path):
+def create_sector_overview_graph(g, sector_df, path, method, ret=False):
+    """
+    Function that creates a graph from all sectors where the edges are calculated
+    based on the given method (sum or mean). The function writes the network to
+    a file to represent it with other softwares.
+    """
 
     edges = nx.get_edge_attributes(g, "weight")
     nodes = list(edges.keys())
@@ -174,7 +179,11 @@ def create_sector_overview_graph(g, sector_df, path):
     edge_df["source_sector"] = edge_df["source"].map(nodes_with_attr)
     edge_df["target_sector"] = edge_df["target"].map(nodes_with_attr)
 
-    el = edge_df.groupby(["source_sector", "target_sector"]).sum().reset_index()
+    if method == "average":
+        el = edge_df.groupby(["source_sector", "target_sector"]).mean().reset_index()
+
+    elif method == "sum":
+        el = edge_df.groupby(["source_sector", "target_sector"]).sum().reset_index()
 
     sector_graph = nx.from_pandas_edgelist(
         el,
@@ -191,9 +200,25 @@ def create_sector_overview_graph(g, sector_df, path):
         sector_graph,
         node_info,
     )
-    nx.write_gexf(sector_graph, f"{path}sectors.gexf")
+    if method == "average":
+        nx.write_gexf(sector_graph, f"{path}sectors_avg.gexf")
+    elif method == "sum":
+        nx.write_gexf(sector_graph, f"{path}sectors_sum.gexf")
 
-    return 1
+    if ret:
+        return sector_graph
+    else:
+        return 1
+
+
+def calculate_weighted_degree_for_sectors(sector_graph):
+
+    df = pd.DataFrame(
+        list(sector_graph.degree(weight="weight")), columns=["Sector", "degree"]
+    )
+    df = df.sort_values("degree", ascending=False)
+
+    return df
 
 
 def _weighted_triangles_and_degree_iter(G, nodes=None, weight="weight"):

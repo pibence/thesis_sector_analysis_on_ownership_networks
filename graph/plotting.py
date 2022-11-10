@@ -98,7 +98,7 @@ def plot_asset_value_dist(G, log=None):
 
 def plot_node_weighted_er_connection(sector_df):
 
-    fig, ax = plt.subplots(figsize=(9, 6))
+    fig, ax = plt.subplots(figsize=(10, 6))
     sns.scatterplot(
         data=sector_df, x="nodes", y="weighted_edge_ratio", hue="sector", s=150, ax=ax
     )
@@ -118,10 +118,10 @@ def plot_node_weighted_er_connection(sector_df):
         fontsize=12,
     )
     ax.grid()
-    ax.set_xlabel("Nodes", size=14)
-    ax.set_ylabel("weighted edge ratio", size=14)
+    ax.set_xlabel("Nodes", size=16)
+    ax.set_ylabel("Weighted edge ratio", size=16)
     ax.set_title(
-        f"Connection between node number and weighted edge ratio", size=18, pad=30
+        f"Connection between node count and weighted edge ratio", size=18, pad=30
     )
     ax.tick_params(labelsize=12)
 
@@ -167,8 +167,8 @@ def plot_sector_network_info(sector_df, x, y, siz):
     y = y.replace("_", " ")
     siz = siz.replace("_", " ")
     ax.grid()
-    ax.set_xlabel(x, size=16)
-    ax.set_ylabel(y, size=16)
+    ax.set_xlabel(x.capitalize(), size=16)
+    ax.set_ylabel(y.capitalize(), size=16)
     ax.set_title(
         f"Sector information in the \n{y}, {x}, {siz} dimensions", size=18, pad=30
     )
