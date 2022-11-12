@@ -198,7 +198,7 @@ def plot_defaults(sectors_dict, sector, method):
             if method == "rounds":
                 defaulted_df = count_defaults_each_round(df_list, percent=True)
                 fig.suptitle(
-                    f"NPercentage of defaulted firms from shocks on different sectors",
+                    f"Percentage of defaulted firms from shocks on different sectors",
                     size=20,
                 )
                 axes.flatten()[i].boxplot(defaulted_df)
@@ -240,7 +240,7 @@ def plot_defaults(sectors_dict, sector, method):
 
     else:
         df_list = sectors_dict[sector]
-        fig, ax = plt.subplots(figsize=(8, 5))
+        fig, ax = plt.subplots(figsize=(12, 9))
 
         if method == "rounds":
             defaulted_df = count_defaults_each_round(df_list, percent=True)
@@ -254,24 +254,27 @@ def plot_defaults(sectors_dict, sector, method):
             defaulted_dict = calculate_effect_on_other_sectors(
                 df_list, sector, direct=True
             )
-            ax.boxplot(defaulted_dict)
-            ax.set_xticklabels(defaulted_dict.keys(), rotation=90)
+            ax.boxplot(defaulted_dict.values())
+            ax.set_xticklabels(defaulted_dict.keys(), rotation=45)
 
             ax = add_axes_attributes_sector(ax)
             ax.set_title(
-                f"% of defaulted firms in each sector from shocks on {sector} sector \nDirect effect"
+                f"Percentage of defaulted firms in each sector from shocks on {sector} sector \nDirect effect"
             )
 
         elif method == "sectors_total":
             defaulted_dict = calculate_effect_on_other_sectors(
                 df_list, sector, direct=False
             )
-            ax.boxplot(defaulted_dict)
-            ax.set_xticklabels(defaulted_dict.keys(), rotation=90)
+            ax.boxplot(defaulted_dict.values())
+            ax.set_xticklabels(defaulted_dict.keys(), rotation=45, ha="right")
 
-            ax = add_axes_attributes_sector(ax)
+            ax = add_axes_attributes_cummplot(ax)
             ax.set_title(
-                f"% of defaulted firms in each sector from shocks on {sector} sector \nTotal effect"
+                f"Percentage of defaulted firms in each sector",
+                fontweight="bold",
+                size=22,
+                pad=30,
             )
 
             ax.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
@@ -280,18 +283,27 @@ def plot_defaults(sectors_dict, sector, method):
 
 
 def add_axes_attributes(ax):
-    ax.set_ylabel("%. of defaulted firms", size=14)
-    ax.set_xlabel("default round", size=14)
+    ax.set_ylabel("Percentage of defaulted firms", size=16, fontweight="bold")
+    ax.set_xlabel("Iteration round", size=16, fontweight="bold")
     ax.tick_params(labelsize=12)
     ax.grid(axis="y", linestyle="--")
 
     return ax
 
 
+def add_axes_attributes_cummplot(ax):
+    ax.set_ylabel("Percentage of defaulted firms", size=20, fontweight="bold")
+    ax.set_xlabel("Iteration round", size=20, fontweight="bold")
+    ax.tick_params(labelsize=20)
+    ax.grid(axis="y", linestyle="--")
+
+    return ax
+
+
 def add_axes_attributes_sector(ax):
-    ax.set_ylabel("%. of defaulted firms", size=14)
-    ax.set_xlabel("sector", size=14)
-    ax.tick_params(labelsize=12)
+    ax.set_ylabel("Percentage of defaulted firms", size=16, fontweight="bold")
+    ax.set_xlabel("Sector", size=16, fontweight="bold")
+    ax.tick_params(labelsize=16)
     ax.grid(axis="y", linestyle="--")
 
     return ax
@@ -309,16 +321,26 @@ def plot_cummulative_defaults(sectors_dict):
             def_dict.values(),
             marker="x",
             linestyle="--",
-            markersize=10,
+            linewidth=3,
+            markersize=14,
             label=sector,
         )
 
-    ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
+    ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.1),
+        fancybox=True,
+        ncol=3,
+        fontsize=20,
+    )
     ax.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=None))
 
-    ax = add_axes_attributes(ax)
+    ax = add_axes_attributes_cummplot(ax)
     ax.set_title(
-        "Cummulative defaults on the network based on shocked industry", size=16
+        "Cummulative defaults on the network\nbased on shocked industry",
+        size=22,
+        pad=30,
+        fontweight="bold",
     )
 
     return fig

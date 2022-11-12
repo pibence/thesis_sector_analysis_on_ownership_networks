@@ -57,3 +57,13 @@ outputs:
   sector_analysis : data/outputs/sector_analysis.csv
   simulations : data/outputs/simulations/
   plots : plots/
+
+output_map :
+  alpha_07_h00 : "2022_10_28_182213"
+  alpha_07_h03 : "2022_10_31_100844"
+  alpha_07_h05 : "2022_11_11_045044"
+  alpha_07_h06 : "2022_11_11_201748"
+  alpha_13_h00 : "2022_11_10_192920"
+  alpha_13_h03 : "2022_10_31_192529"
+  alpha_13_h05 : "2022_11_02_005310"
+  alpha_13_h06 : "2022_11_02_043541"

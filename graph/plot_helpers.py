@@ -124,10 +124,10 @@ def calculate_effect_on_other_sectors(df_list, shocked_sector, direct=False):
         res = res / sector_count * 100  # values will be displayed as percentages
         for i in range(0, len(res)):
             try:
-                result_dict[res.index[i]].append(res.iloc[i])
+                result_dict[res.index[i]].append(np.nan_to_num(res.iloc[i], nan=0))
             except KeyError:
                 result_dict[res.index[i]] = []
-                result_dict[res.index[i]].append(res.iloc[i])
+                result_dict[res.index[i]].append(np.nan_to_num(res.iloc[i], nan=0))
 
     return result_dict
 

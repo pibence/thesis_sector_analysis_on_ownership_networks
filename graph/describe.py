@@ -3,6 +3,12 @@ import networkx as nx
 import numpy as np
 import logging
 
+from .plot_helpers import (
+    calculate_effect_from_other_sectors,
+    load_simulation_for_all_sectors,
+    sort_dictionary_by_mean_of_list,
+)
+
 
 logging.basicConfig(
     filename="logs/graph.log",
@@ -158,6 +164,35 @@ def calculate_clustering_coeff(g, nodes, weight):
 def calculate_modified_clustering_coeff(g, nodes, weight):
     cc = list(modified_clustering(g, nodes=nodes, weight=weight).values())
     return np.mean(cc)
+
+
+def create_largest_influence_table(output_map, simulations_path, sector_list):
+    """
+    Function that returns a dataframe where the columns represent different
+    simulations and the indices represent sectors, while the values are the
+    most influential sectors for each sector in terms of defaults.
+    """
+
+    master_dict = {}
+    # iterating through every simulation
+    for sim, folder in output_map.items():
+        sectors_dict = load_simulation_for_all_sectors(
+            simulations_path, folder, sector_list
+        )
+
+        # calculating effects from other sectors
+        result_dict = calculate_effect_from_other_sectors(sectors_dict)
+
+        # getting the largest influential sector (value) for every sector (keys)
+        largest_impact_dict = {}
+        for sec, def_dict in result_dict.items():
+            def_dict = sort_dictionary_by_mean_of_list(def_dict)
+            largest_impact_dict[sec] = list(def_dict.keys())[0]
+
+        master_dict[sim] = largest_impact_dict
+
+        ret_df = pd.DataFrame.from_dict(master_dict, orient="columns")
+    return ret_df
 
 
 def create_sector_overview_graph(g, sector_df, path, method, ret=False):
