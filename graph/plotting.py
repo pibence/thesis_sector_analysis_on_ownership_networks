@@ -61,11 +61,11 @@ def plot_graph_features(G: nx.Graph, log=None):
         ax.set_yscale("log")
         ax.set_xscale("log")
 
-        ax.set_xlabel("degree (log)", size=18, fontweight="bold")
-        ax.set_ylabel("frequency (log)", size=18, fontweight="bold")
+        ax.set_xlabel("Degree (log)", size=18, fontweight="bold")
+        ax.set_ylabel("Frequency (log)", size=18, fontweight="bold")
     elif log == "x":
         ax.set_xscale("log")
-        ax.set_xlabel("degree (log)", size=18, fontweight="bold")
+        ax.set_xlabel("Degree (log)", size=18, fontweight="bold")
 
     return fig
 
