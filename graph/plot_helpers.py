@@ -92,7 +92,9 @@ def calculate_cummulative_defaults(sectors_dict):
     return plot_dict
 
 
-def calculate_effect_on_other_sectors(df_list, shocked_sector, direct=False):
+def calculate_effect_on_other_sectors(
+    df_list, shocked_sector, include_self=False, direct=False
+):
 
     """
     Function that calculates the direct effect on the other sectors from one
@@ -103,23 +105,32 @@ def calculate_effect_on_other_sectors(df_list, shocked_sector, direct=False):
 
     result_dict = {}
     for df in df_list:
+        if include_self:
+            sector_count = df.groupby("sector").count()["label"]
 
-        sector_count = (
-            df[df.sector != shocked_sector].groupby("sector").count()["label"]
-        )
-
-        if direct:
-            res = (
-                df[(df.default_round == 2) & (df.sector != shocked_sector)]
-                .groupby("sector")
-                .count()["label"]
-            )
+            if direct:
+                res = df[(df.default_round == 2)].groupby("sector").count()["label"]
+            else:
+                res = (
+                    df[(~pd.isna(df.default_round))].groupby("sector").count()["label"]
+                )
         else:
-            res = (
-                df[(~pd.isna(df.default_round)) & (df.sector != shocked_sector)]
-                .groupby("sector")
-                .count()["label"]
+            sector_count = (
+                df[df.sector != shocked_sector].groupby("sector").count()["label"]
             )
+
+            if direct:
+                res = (
+                    df[(df.default_round == 2) & (df.sector != shocked_sector)]
+                    .groupby("sector")
+                    .count()["label"]
+                )
+            else:
+                res = (
+                    df[(~pd.isna(df.default_round)) & (df.sector != shocked_sector)]
+                    .groupby("sector")
+                    .count()["label"]
+                )
 
         res = res / sector_count * 100  # values will be displayed as percentages
         for i in range(0, len(res)):
@@ -132,7 +143,7 @@ def calculate_effect_on_other_sectors(df_list, shocked_sector, direct=False):
     return result_dict
 
 
-def calculate_effect_from_other_sectors(sectors_dict):
+def calculate_effect_from_other_sectors(sectors_dict, include_self=False):
     """
     Helper function to calculate the effect of each sectors shock on one sector.
     The returned value is a nested dictionary thats keys are the sectors that
@@ -152,7 +163,9 @@ def calculate_effect_from_other_sectors(sectors_dict):
     for shocked_sector, df_list in sectors_dict.items():
 
         # calculating the effects of shocking the 'shocked sector'
-        interim_dict = calculate_effect_on_other_sectors(df_list, shocked_sector, False)
+        interim_dict = calculate_effect_on_other_sectors(
+            df_list, shocked_sector, include_self, False
+        )
 
         # saving the results of the shock on each sector to an inner dictionary where
         # the key is the shocked sector
@@ -175,3 +188,21 @@ def sort_dictionary_by_mean_of_list(d):
     ret_dict = {key: d[key] for key in sorted_keys}
 
     return ret_dict
+
+
+def calculate_pairwise_effect_for_heatmap(sectors_dict, include_self=False):
+    """
+    Function to calculate pairwise average effect of sectors on each other.
+    """
+
+    result_dict = calculate_effect_from_other_sectors(sectors_dict, include_self=True)
+    sector_list = sorted(list(sectors_dict.keys()))
+
+    m = np.zeros((10, 10))
+    for i, s in enumerate(sector_list):
+        for j, se in enumerate(sector_list):
+            m[i, j] = np.mean(result_dict[s][se])
+
+    if not include_self:
+        np.fill_diagonal(m, 0)
+    return m
