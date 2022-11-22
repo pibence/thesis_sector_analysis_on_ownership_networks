@@ -49,24 +49,23 @@ def plot_graph_features(G: nx.Graph, log=None):
         color="darkred",
     )
     # setting design
-    ax.set_xlabel("Degree", size=14)
-    ax.set_ylabel("Frequency", size=14)
+    ax.set_xlabel("Degree", size=18, fontweight="bold")
+    ax.set_ylabel("Frequency", size=18, fontweight="bold")
 
-    ax.set_title("Degree distribution", size=18)
+    ax.set_title("Degree distribution", size=20, pad=30, fontweight="bold")
 
-    ax.tick_params(labelsize=12)
+    ax.tick_params(labelsize=16)
     ax.grid(axis="y", linestyle="--")
 
     if log == "xy":
         ax.set_yscale("log")
         ax.set_xscale("log")
 
-        ax.set_xlabel("degree (log)", size=14)
-        ax.set_ylabel("frequency (log)", size=14)
+        ax.set_xlabel("degree (log)", size=18, fontweight="bold")
+        ax.set_ylabel("frequency (log)", size=18, fontweight="bold")
     elif log == "x":
         ax.set_xscale("log")
-
-        ax.set_xlabel("degree (log)", size=14)
+        ax.set_xlabel("degree (log)", size=18, fontweight="bold")
 
     return fig
 
@@ -119,10 +118,13 @@ def plot_node_weighted_er_connection(sector_df):
         fontsize=12,
     )
     ax.grid()
-    ax.set_xlabel("Nodes", size=16)
-    ax.set_ylabel("Weighted edge ratio", size=16)
+    ax.set_xlabel("Nodes", size=16, fontweight="bold")
+    ax.set_ylabel("Weighted edge ratio", size=16, fontweight="bold")
     ax.set_title(
-        f"Connection between node count and weighted edge ratio", size=18, pad=30
+        f"Connection between node count and weighted edge ratio",
+        size=18,
+        pad=30,
+        fontweight="bold",
     )
     ax.tick_params(labelsize=12)
 
@@ -168,12 +170,15 @@ def plot_sector_network_info(sector_df, x, y, siz):
     y = y.replace("_", " ")
     siz = siz.replace("_", " ")
     ax.grid()
-    ax.set_xlabel(x.capitalize(), size=16)
-    ax.set_ylabel(y.capitalize(), size=16)
+    ax.set_xlabel(x.capitalize(), size=16, fontweight="bold")
+    ax.set_ylabel(y.capitalize(), size=16, fontweight="bold")
     ax.set_title(
-        f"Sector information in the \n{y}, {x}, {siz} dimensions", size=18, pad=30
+        f"Sector information in the \n{y}, {x}, {siz} dimensions",
+        size=18,
+        pad=30,
+        fontweight="bold",
     )
-    ax.tick_params(labelsize=12)
+    ax.tick_params(labelsize=14)
 
     return fig
 
