@@ -7,4 +7,6 @@ __pycache__/
 *.csv
 notes.md
 plots/
+process.md
+test_notebooks/
 
