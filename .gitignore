@@ -1,7 +1,6 @@
 *.idea
 *.ipynb_checkpoints
 data/
-*.ipynb
 logs/
 __pycache__/
 *.csv
